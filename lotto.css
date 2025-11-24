@@ -1,0 +1,73 @@
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap');
+
+body {
+    font-family: 'Sarabun', sans-serif;
+}
+
+/* Keypad Grid Styling */
+.keypad-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+}
+
+.keypad-grid button {
+    border-radius: 8px;
+    transition: all 0.1s;
+}
+
+.keypad-grid button:active {
+    transform: scale(0.95);
+    background-color: #e2e6ea;
+}
+
+/* Display Screen */
+.display-screen {
+    height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    border: 2px solid #343a40;
+}
+
+/* Scrollbar สำหรับรายการ */
+#bet-list::-webkit-scrollbar {
+    width: 6px;
+}
+#bet-list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+#bet-list::-webkit-scrollbar-thumb {
+    background: #bbb;
+    border-radius: 3px;
+}
+#bet-list::-webkit-scrollbar-thumb:hover {
+    background: #888;
+}
+
+/* Special Options Area */
+#special-options-wrapper {
+    transition: all 0.3s ease;
+}
+
+/* Class สำหรับปิดการใช้งาน (Disabled Area) */
+.disabled-area {
+    opacity: 0.4;
+    pointer-events: none;
+    background-color: #e9ecef !important;
+}
+
+.special-btn {
+    font-size: 0.85rem;
+    font-weight: 400;
+}
+
+/* Animation เล็กน้อยตอนรายการเด้งเข้ามา */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade {
+    animation: fadeIn 0.3s ease-out;
+}

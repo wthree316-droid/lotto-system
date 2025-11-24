@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lotto Keypad</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="lotto.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="firebase-config.js"></script>
+
+</head>
+<body class="bg-light">
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+        <div class="container-fluid">
+            <div class="d-flex align-items-center">
+                <a href="menu.html" class="btn btn-outline-secondary text-white border-0 btn-sm me-2">
+                    <i class="fas fa-chevron-left fs-5"></i>
+                </a>
+                <a class="navbar-brand" href="#">TeamZent Lotto Keypad</a>
+            </div>
+            
+            <a href="history.html?from=lotto" class="btn btn-outline-light btn-sm">
+                <i class="fas fa-list"></i> ดูประวัติ
+            </a>
+        </div>
+    </nav>
+
+    <main class="container-fluid py-4">
+        <div class="row">
+            
+            <!-- Left Side: รายการ -->
+            <div class="col-lg-5 mb-4">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <div class="d-flex flex-column">
+                            <h5 class="m-0 fw-bold text-white" id="lotto-title">กำลังโหลด...</h5>
+                            <small class="text-white-50" id="lotto-info" style="font-size: 0.8rem;">รอสักครู่...</small>
+                        </div>
+                        <button class="btn btn-sm btn-light text-primary fw-bold" onclick="setAllPrices()">ใส่ราคาเท่ากันหมด</button>
+                    </div>
+                    
+                    <div class="card-body p-0 bg-light">
+                        <div class="d-flex px-3 py-2 border-bottom fw-bold text-secondary bg-white small">
+                            <div style="width: 30%;">เลข</div>
+                            <div style="width: 30%;">ประเภท</div>
+                            <div style="width: 30%;">ราคา</div>
+                            <div style="width: 10%;"></div>
+                        </div>
+                        <div class="list-group list-group-flush" id="bet-list" style="height: 550px; overflow-y: auto;"></div>
+                    </div>
+
+                    <div class="card-footer">
+                        <div class="d-flex justify-content-between mb-2 fw-bold">
+                            <span>จำนวน: <span id="item-count" class="text-primary">0</span></span>
+                            <span>รวม: <span id="total-amount" class="text-success">0</span> บาท</span>
+                        </div>
+                        <button class="btn btn-outline-danger w-100 mb-2" onclick="clearList()">
+                            <i class="fas fa-trash-alt"></i> ล้างรายการทั้งหมด
+                        </button>
+                        <button class="btn btn-success w-100 py-2 fs-5 shadow-sm" onclick="saveBill()">
+                            <i class="fas fa-save"></i> บันทึกบิล
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side: Keypad -->
+            <div class="col-lg-7">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        
+                        <div class="display-screen mb-3 p-3 bg-dark text-white text-end rounded fs-1 font-monospace position-relative">
+                            <span id="current-input" class="text-warning">_</span>
+                            <span class="position-absolute top-0 start-0 m-2 badge bg-secondary" id="mode-badge">3 ตัว</span>
+                            <span class="position-absolute bottom-0 start-0 m-2 badge bg-warning text-dark d-none" id="special-badge"></span>
+                        </div>
+
+                        <div class="mb-3 text-center">
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="mainType" id="type3" checked onclick="changeCategory('3')">
+                                <label class="btn btn-outline-primary" for="type3">3 ตัว</label>
+
+                                <input type="radio" class="btn-check" name="mainType" id="type2" onclick="changeCategory('2')">
+                                <label class="btn btn-outline-primary" for="type2">2 ตัว</label>
+
+                                <input type="radio" class="btn-check" name="mainType" id="typeRun" onclick="changeCategory('run')">
+                                <label class="btn btn-outline-primary" for="typeRun">เลขวิ่ง</label>
+                            </div>
+                        </div>
+
+                        <div class="d-flex flex-wrap gap-2 justify-content-center mb-3" id="sub-options"></div>
+
+                        <div class="mb-2">
+                            <input type="checkbox" class="btn-check" id="btn-reverse" onchange="toggleReverse()">
+                            <label class="btn btn-outline-danger w-100 fw-bold py-2" id="label-reverse" for="btn-reverse">
+                                <i class="fas fa-exchange-alt"></i> เปิดระบบกลับเลข
+                            </label>
+                        </div>
+
+                        <div id="special-options-wrapper" class="mb-3 p-2 border rounded bg-light disabled-area">
+                            <small class="text-muted d-block mb-2 text-center" style="font-size: 0.85rem;">ตัวเลือกเพิ่มเติม (เฉพาะ 2 ตัว)</small>
+                            <div class="row g-2">
+                                <div class="col-4"><button class="btn btn-outline-secondary w-100 btn-sm special-btn" onclick="selectSpecial('19door')">19 ประตู</button></div>
+                                <div class="col-4"><button class="btn btn-outline-secondary w-100 btn-sm special-btn" onclick="selectSpecial('rootFront')">รูดหน้า</button></div>
+                                <div class="col-4"><button class="btn btn-outline-secondary w-100 btn-sm special-btn" onclick="selectSpecial('rootBack')">รูดหลัง</button></div>
+                                
+                                <div class="col-4"><button class="btn btn-outline-secondary w-100 btn-sm special-btn" onclick="selectSpecial('double')">เลขเบิ้ล</button></div>
+                                <div class="col-4"><button class="btn btn-outline-secondary w-100 btn-sm special-btn" onclick="selectSpecial('even')">เลขคู่</button></div>
+                                <div class="col-4"><button class="btn btn-outline-secondary w-100 btn-sm special-btn" onclick="selectSpecial('odd')">เลขคี่</button></div>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <!-- Keypad Grid (แก้ไขใหม่: ลบ OK, เอา 0 ไว้กลาง) -->
+                        <div class="keypad-grid">
+                            <!-- แถว 1 -->
+                            <button class="btn btn-light border shadow-sm fs-2 py-3" onclick="pressKey('1')">1</button>
+                            <button class="btn btn-light border shadow-sm fs-2 py-3" onclick="pressKey('2')">2</button>
+                            <button class="btn btn-light border shadow-sm fs-2 py-3" onclick="pressKey('3')">3</button>
+                            <!-- แถว 2 -->
+                            <button class="btn btn-light border shadow-sm fs-2 py-3" onclick="pressKey('4')">4</button>
+                            <button class="btn btn-light border shadow-sm fs-2 py-3" onclick="pressKey('5')">5</button>
+                            <button class="btn btn-light border shadow-sm fs-2 py-3" onclick="pressKey('6')">6</button>
+                            <!-- แถว 3 -->
+                            <button class="btn btn-light border shadow-sm fs-2 py-3" onclick="pressKey('7')">7</button>
+                            <button class="btn btn-light border shadow-sm fs-2 py-3" onclick="pressKey('8')">8</button>
+                            <button class="btn btn-light border shadow-sm fs-2 py-3" onclick="pressKey('9')">9</button>
+                            
+                            <!-- แถว 4 (ใหม่) : Delete | 0 | Clear -->
+                            <button class="btn btn-danger fs-4 py-3" onclick="deleteLast()"><i class="fas fa-backspace"></i></button>
+                            <button class="btn btn-light border shadow-sm fs-2 py-3" onclick="pressKey('0')">0</button>
+                            <button class="btn btn-warning fs-4 py-3" onclick="clearAll()">C</button>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="lotto.js"></script>
+</body>
+</html>
