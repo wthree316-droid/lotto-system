@@ -29,50 +29,30 @@
 
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
         <div class="container">
-            <a class="navbar-brand" href="#">TeamZent Lotto Keypad</a>
+            <a class="navbar-brand" href="#">TEAMZENT LOTTO</a>
             
-            <div class="d-flex align-items-center">
-                <a href="history.html?from=menu" class="btn btn-outline-light btn-sm me-3">
-                    <i class="fas fa-list"></i> ดูประวัติ
-                </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+                <span class="navbar-toggler-icon"></span>
+            </button>
 
-                <div class="text-white text-end me-3 d-none d-sm-block">
-                    <small class="d-block text-secondary" style="font-size: 0.8rem;">ผู้ใช้งาน</small>
-                    <span class="fw-bold text-success" id="user-display">User</span>
-                </div>
-
-
-            <script>
-                function selectLotto(name, closeTime) {
-                    localStorage.setItem('selectedLottoName', name);
-                    localStorage.setItem('selectedLottoTime', closeTime);
-                    window.location.href = 'lotto.html';
-                }
-
-                document.addEventListener('DOMContentLoaded', () => {
-                    // --- ส่วนแสดงชื่อผู้ใช้ ---
-                    const agentName = localStorage.getItem('agentName') || 'Guest';
-                    const isAdmin = localStorage.getItem('isAdmin') === 'true';
+            <div class="collapse navbar-collapse justify-content-end" id="navbarContent">
+                <div class="d-flex align-items-center mt-3 mt-lg-0">
                     
-                    const display = document.getElementById('user-display');
-                    if(display) {
-                        // ถ้าเป็น Admin ให้เติมไอคอนมงกุฎ
-                        if(isAdmin) {
-                            display.innerHTML = `<i class="fas fa-crown text-warning me-1"></i> ${agentName}`;
-                        } else {
-                            display.innerText = agentName;
-                        }
-                    }
-                    
-                    // เริ่มนับถอยหลัง
-                    setInterval(updateCountdowns, 1000);
-                    updateCountdowns();
-                });
+                    <a href="history.html?from=menu" class="btn btn-outline-light btn-sm me-2">
+                        <i class="fas fa-list"></i> ดูประวัติ
+                    </a>
 
-                // ... (ฟังก์ชัน updateCountdowns และ pad เหมือนเดิม) ...
-            </script>
-                <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center text-white" style="width: 40px; height: 40px;">
-                    <i class="fas fa-user"></i>
+                    <button onclick="logout()" class="btn btn-danger btn-sm me-3">
+                        <i class="fas fa-sign-out-alt"></i> ออกจากระบบ
+                    </button>
+
+                    <div class="text-white text-end me-3 d-none d-sm-block">
+                        <small class="d-block text-secondary" style="font-size: 0.8rem;">ผู้ใช้งาน</small>
+                        <span class="fw-bold text-success" id="user-display">Checking...</span>
+                    </div>
+                    <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center text-white" style="width: 40px; height: 40px;">
+                        <i class="fas fa-user"></i>
+                    </div>
                 </div>
             </div>
         </div>
@@ -316,6 +296,15 @@
         function pad(n) {
             return n < 10 ? '0' + n : n;
         }
+
+
+    function logout() {
+        if(confirm("ต้องการออกจากระบบใช่หรือไม่?")) {
+            localStorage.removeItem('agentName'); // ลบชื่อที่จำไว้
+            localStorage.removeItem('isAdmin');   // ลบสถานะ Admin (ถ้ามี)
+            window.location.href = 'index.html';  // ดีดกลับหน้า Login
+        }
+    }
     </script>
 </body>
 </html>
