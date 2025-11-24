@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> เข้าสู่ระบบ </title>
+    <title>เข้าสู่ระบบ</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    
     <script src="firebase-config.js"></script>
 
     <style>
@@ -20,6 +19,7 @@
             align-items: center;
             justify-content: center;
             font-family: 'Sarabun', sans-serif;
+            flex-direction: column;
         }
         .login-card {
             background: white;
@@ -28,6 +28,29 @@
             width: 100%;
             max-width: 420px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            position: relative;
+            z-index: 2;
+        }
+        /* Style ปุ่มสลับแท็บ */
+        .nav-pills .nav-link {
+            color: #6c757d;
+            background-color: #f8f9fa;
+            margin: 0 5px;
+            border-radius: 8px;
+            transition: all 0.3s;
+            cursor: pointer; /* เพิ่ม cursor pointer */
+        }
+        .nav-pills .nav-link.active {
+            color: white;
+            background-color: #0d6efd;
+            font-weight: bold;
+            box-shadow: 0 4px 6px rgba(13, 110, 253, 0.3);
+        }
+        .ip-footer {
+            margin-top: 20px;
+            color: #6c757d;
+            font-size: 0.85rem;
+            text-align: center;
         }
     </style>
 </head>
@@ -37,27 +60,27 @@
         <div class="text-center mb-4 text-primary">
             <i class="fas fa-shield-alt fa-4x"></i>
         </div>
-        <h3 class="text-center fw-bold mb-4">Lotto System Pro</h3>
+        <h3 class="text-center fw-bold mb-4">TEAMZENT LOTTO</h3>
 
         <div id="state-loading" class="text-center py-4">
             <div class="spinner-border text-primary mb-3" role="status"></div>
-            <p class="text-muted animate-pulse">กำลังตรวจสอบข้อมูล...</p>
+            <p class="text-muted">กำลังตรวจสอบข้อมูล...</p>
         </div>
 
         <div id="state-login" class="d-none">
             
             <ul class="nav nav-pills nav-fill mb-4" id="pills-tab" role="tablist">
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link active" id="pills-login-tab" data-bs-toggle="pill" data-bs-target="#pills-login" type="button">เข้าสู่ระบบ</button>
+                    <button class="nav-link active" id="pills-login-tab" data-bs-toggle="pill" data-bs-target="#pills-login" type="button" role="tab">เข้าสู่ระบบ</button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link" id="pills-register-tab" data-bs-toggle="pill" data-bs-target="#pills-register" type="button">ลงทะเบียนใหม่</button>
+                    <button class="nav-link" id="pills-register-tab" data-bs-toggle="pill" data-bs-target="#pills-register" type="button" role="tab">ลงทะเบียนใหม่</button>
                 </li>
             </ul>
 
             <div class="tab-content" id="pills-tabContent">
                 
-                <div class="tab-pane fade show active" id="pills-login">
+                <div class="tab-pane fade show active" id="pills-login" role="tabpanel">
                     <div class="mb-3">
                         <label class="form-label text-secondary fw-bold">ชื่อผู้ใช้งาน</label>
                         <input type="text" class="form-control bg-light" id="loginName" placeholder="เช่น User1">
@@ -69,15 +92,21 @@
                     <button class="btn btn-primary w-100 py-2 shadow-sm" onclick="handleLogin()">เข้าใช้งาน <i class="fas fa-arrow-right ms-1"></i></button>
                 </div>
 
-                <div class="tab-pane fade" id="pills-register">
-                    <div class="alert alert-info small border-0"><i class="fas fa-info-circle"></i> สร้างบัญชีใหม่สำหรับร้านนี้</div>
+                <div class="tab-pane fade" id="pills-register" role="tabpanel">
+                    <div class="alert alert-info small border-0 py-2"><i class="fas fa-user-plus"></i> สร้างบัญชีใหม่</div>
                     <div class="mb-3">
                         <label class="form-label text-secondary">ตั้งชื่อผู้ใช้งาน</label>
                         <input type="text" class="form-control" id="regName" placeholder="เช่น User1">
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label text-secondary">ตั้งรหัส PIN (4 หลัก)</label>
-                        <input type="password" class="form-control" id="regPin" placeholder="****" maxlength="4">
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label text-secondary">PIN (4 หลัก)</label>
+                            <input type="password" class="form-control" id="regPin" placeholder="****" maxlength="4">
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label text-secondary">ยืนยัน PIN</label>
+                            <input type="password" class="form-control" id="regPinConfirm" placeholder="****" maxlength="4">
+                        </div>
                     </div>
                     <button class="btn btn-success w-100 py-2 shadow-sm" onclick="handleRegister()">ยืนยันการลงทะเบียน</button>
                 </div>
@@ -86,33 +115,49 @@
         </div>
     </div>
 
+    <div class="ip-footer">
+        <i class="fas fa-wifi me-1"></i> Your IP: <span id="user-ip" class="fw-bold">Checking...</span>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
     <script>
-        // *** 1. คำสั่งเริ่มทำงานเมื่อเปิดหน้าเว็บ ***
         document.addEventListener('DOMContentLoaded', () => {
-            // ตรวจสอบว่าเคยล็อกอินค้างไว้ไหม
+            // 1. ตรวจสอบ Login ค้าง
             const storedUser = localStorage.getItem('agentName');
-            
-            // หน่วงเวลา 1 วินาที ให้เห็นโลโก้โหลดนิดนึง แล้วค่อยเปลี่ยนหน้า
             setTimeout(() => {
                 if (storedUser) {
-                    // ถ้าเคยล็อกอินแล้ว ให้ไปหน้าเมนูเลย
                     window.location.href = 'menu.html';
                 } else {
-                    // ถ้ายังไม่ล็อกอิน ให้ซ่อนหน้าโหลด -> โชว์หน้าล็อกอิน
                     document.getElementById('state-loading').classList.add('d-none');
                     document.getElementById('state-login').classList.remove('d-none');
                 }
-            }, 1000);
+            }, 800);
+
+            // 2. ดึง IP Address
+            fetch('https://api.ipify.org?format=json')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('user-ip').innerText = data.ip;
+                })
+                .catch(() => {
+                    document.getElementById('user-ip').innerText = "Unknown";
+                });
         });
 
-
-        // *** 2. ฟังก์ชันลงทะเบียน (Register) ***
+        // --- ฟังก์ชันลงทะเบียน ---
         function handleRegister() {
             const name = document.getElementById('regName').value.trim();
             const pin = document.getElementById('regPin').value.trim();
+            const pinConfirm = document.getElementById('regPinConfirm').value.trim();
 
             if (!name || pin.length !== 4) {
                 alert("กรุณากรอกชื่อ และรหัส PIN ให้ครบ 4 หลัก");
+                return;
+            }
+
+            if (pin !== pinConfirm) {
+                alert("❌ รหัส PIN และ การยืนยัน PIN ไม่ตรงกัน!");
                 return;
             }
 
@@ -126,13 +171,23 @@
                     db.collection("users").add({
                         name: name,
                         pin: pin,
+                        ip_address: document.getElementById('user-ip').innerText,
                         created_at: firebase.firestore.FieldValue.serverTimestamp()
                     }).then(() => {
-                        alert("ลงทะเบียนสำเร็จ! กรุณาเข้าสู่ระบบ");
-                        // สลับ Tab ไปหน้า Login
-                        document.querySelector('#pills-login-tab').click();
+                        alert("✅ ลงทะเบียนสำเร็จ! กรุณาเข้าสู่ระบบ");
+                        
+                        // สลับแท็บด้วย Bootstrap API (วิธีที่ถูกต้อง)
+                        const loginTabTrigger = new bootstrap.Tab('#pills-login-tab');
+                        loginTabTrigger.show();
+
                         document.getElementById('loginName').value = name;
+                        document.getElementById('loginPin').value = ''; 
                         document.getElementById('loginPin').focus();
+                        
+                        // เคลียร์ช่องลงทะเบียน
+                        document.getElementById('regName').value = '';
+                        document.getElementById('regPin').value = '';
+                        document.getElementById('regPinConfirm').value = '';
                     });
                 }
             })
@@ -142,33 +197,28 @@
             });
         }
 
-
-        // *** 3. ฟังก์ชันเข้าสู่ระบบ (Login) ***
+        // --- ฟังก์ชันเข้าสู่ระบบ ---
         function handleLogin() {
             const name = document.getElementById('loginName').value.trim();
             const pin = document.getElementById('loginPin').value.trim();
 
             if (!name || !pin) { alert("กรุณากรอกข้อมูลให้ครบ"); return; }
 
-            // แสดง Loading ที่ปุ่ม
             const btn = event.target;
             const originalText = btn.innerHTML;
-            btn.innerHTML = '<div class="spinner-border spinner-border-sm"></div> กำลังตรวจสอบ...';
+            btn.innerHTML = '<div class="spinner-border spinner-border-sm"></div> ตรวจสอบ...';
             btn.disabled = true;
 
-            // เช็คข้อมูลกับ Firebase
             db.collection("users")
                 .where("name", "==", name)
                 .where("pin", "==", pin)
                 .get()
                 .then((querySnapshot) => {
                     if (!querySnapshot.empty) {
-                        // Login ผ่าน
                         localStorage.setItem('agentName', name);
                         window.location.href = 'menu.html';
                     } else {
-                        alert("ชื่อผู้ใช้หรือรหัส PIN ไม่ถูกต้อง!");
-                        // คืนค่าปุ่ม
+                        alert("❌ ชื่อผู้ใช้หรือรหัส PIN ไม่ถูกต้อง!");
                         btn.innerHTML = originalText;
                         btn.disabled = false;
                     }
@@ -181,7 +231,6 @@
                 });
         }
 
-        // กด Enter เพื่อล็อกอินได้เลย
         document.getElementById('loginPin').addEventListener("keypress", function(event) {
             if (event.key === "Enter") handleLogin();
         });
