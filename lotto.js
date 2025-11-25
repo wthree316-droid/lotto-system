@@ -197,13 +197,19 @@ function forceAdd() {
 
 // --- Generator & Calculation Logic ---
 
+// ค้นหาฟังก์ชัน generateNumbers ในไฟล์ lotto.js แล้วเปลี่ยนเป็นอันนี้ครับ
+
 function generateNumbers() {
     let numbers = [];
     
     if (currentSpecialMode) {
         const n = currentInput;
-        // ป้องกัน n เป็นค่าว่าง
-        if(n === "") return [];
+
+        // *** แก้ไขจุดนี้ *** // เฉพาะโหมด 19ประตู, รูดหน้า, รูดหลัง เท่านั้นที่ต้องเช็คว่ามีตัวเลขไหม
+        // ส่วน เบิ้ล, คู่, คี่ ให้ผ่านไปได้เลย
+        if (['19door', 'rootFront', 'rootBack'].includes(currentSpecialMode) && n === "") {
+            return [];
+        }
 
         switch (currentSpecialMode) {
             case '19door': 
@@ -229,9 +235,12 @@ function generateNumbers() {
                 break;
         }
     } else {
+        // โหมดปกติ
         if (isReverseMode) {
             numbers = getPermutations(currentInput);
         } else {
+            // ถ้าไม่มีเลขเลย ให้ส่งกลับว่างๆ
+            if(currentInput === "") return [];
             numbers = [currentInput];
         }
     }
