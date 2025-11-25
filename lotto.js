@@ -2,8 +2,6 @@ let currentInput = "";
 let currentCategory = "3";
 let isReverseMode = false;
 let currentSpecialMode = null; 
-
-// ตัวแปรสำหรับจัดการ Timeout การกดรัว
 let autoSubmitTimer = null; 
 
 const subOptionsData = {
@@ -13,7 +11,6 @@ const subOptionsData = {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. โหลดชื่อหวยจากหน้า Menu
     const lottoName = localStorage.getItem('selectedLottoName');
     const lottoTime = localStorage.getItem('selectedLottoTime');
     
@@ -23,13 +20,10 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         document.getElementById('lotto-title').innerText = "ทดสอบระบบ";
     }
-
-    // 2. เริ่มต้นค่า
     changeCategory('3');
 });
 
-// --- Category & UI Logic ---
-
+// --- 1. ส่วนจัดการหมวดหมู่ ---
 function changeCategory(type) {
     currentCategory = type;
     currentInput = "";
@@ -91,9 +85,9 @@ function selectSpecial(mode) {
     
     updateBadge();
 
+    // ถ้าเป็นโหมด Instant ให้ทำงานเลย
     if (['double', 'even', 'odd'].includes(mode)) {
-        addToList(); // กลุ่มนี้ไม่ต้องรอเลข กดปุ๊บมาปั๊บ
-        resetSpecialMode();
+        addToList(); 
     }
 }
 
@@ -144,10 +138,8 @@ function updateBadge() {
     }
 }
 
-// --- Keypad & Input Logic (แก้บั๊กกดรัวตรงนี้) ---
-
+// --- 2. ส่วนจัดการปุ่มกด (ใส่ Timer กันกดรัว) ---
 function pressKey(num) {
-    // 1. หาจำนวนหลักที่ต้องการ
     let maxLen = 0;
     if (currentSpecialMode && ['19door', 'rootFront', 'rootBack'].includes(currentSpecialMode)) {
         maxLen = 1;
@@ -155,22 +147,18 @@ function pressKey(num) {
         maxLen = (currentCategory === '3') ? 3 : (currentCategory === '2') ? 2 : 1;
     }
     
-    // 2. ถ้าเลขยังไม่ครบ ก็เติมเข้าไป
     if (currentInput.length < maxLen) {
         currentInput += num;
         updateDisplay();
     }
 
-    // 3. ป้องกันการ Submit ซ้ำซ้อน (Clear Timeout เก่าทิ้งเสมอเมื่อมีการกดปุ่ม)
-    if (autoSubmitTimer) {
-        clearTimeout(autoSubmitTimer);
-    }
+    // กันเบิ้ล
+    if (autoSubmitTimer) clearTimeout(autoSubmitTimer);
 
-    // 4. ถ้าครบหลักแล้ว ให้ตั้งเวลา Submit ใหม่
     if (currentInput.length === maxLen) {
         autoSubmitTimer = setTimeout(() => {
             addToList();
-        }, 200); // หน่วง 200ms
+        }, 200);
     }
 }
 
@@ -195,18 +183,14 @@ function forceAdd() {
     if(currentInput.length > 0) addToList();
 }
 
-// --- Generator & Calculation Logic ---
-
-// ค้นหาฟังก์ชัน generateNumbers ในไฟล์ lotto.js แล้วเปลี่ยนเป็นอันนี้ครับ
-
+// --- 3. ส่วนคำนวณเลข (Generator) ---
 function generateNumbers() {
     let numbers = [];
     
     if (currentSpecialMode) {
         const n = currentInput;
 
-        // *** แก้ไขจุดนี้ *** // เฉพาะโหมด 19ประตู, รูดหน้า, รูดหลัง เท่านั้นที่ต้องเช็คว่ามีตัวเลขไหม
-        // ส่วน เบิ้ล, คู่, คี่ ให้ผ่านไปได้เลย
+        // เช็คเฉพาะโหมดที่ต้องใช้เลข (19ประตู/รูด) ถ้าไม่มีเลขให้ว่างไว้
         if (['19door', 'rootFront', 'rootBack'].includes(currentSpecialMode) && n === "") {
             return [];
         }
@@ -235,11 +219,9 @@ function generateNumbers() {
                 break;
         }
     } else {
-        // โหมดปกติ
         if (isReverseMode) {
             numbers = getPermutations(currentInput);
         } else {
-            // ถ้าไม่มีเลขเลย ให้ส่งกลับว่างๆ
             if(currentInput === "") return [];
             numbers = [currentInput];
         }
@@ -271,37 +253,29 @@ function getPermutations(numStr) {
     return Array.from(results);
 }
 
-// --- ฟังก์ชันเพิ่มลงรายการ (แก้บั๊กเพิ่มค่าว่างตรงนี้) ---
-
+// --- 4. ส่วนเพิ่มลงตาราง (Add to List) ---
 function addToList() {
-    // 1. เช็ค Checkbox
     const checkboxes = document.querySelectorAll('.sub-opt-check:checked');
     if (checkboxes.length === 0) return;
 
-    // 2. *** แก้ไขจุดที่ทำให้กดปุ่มพิเศษไม่ติด ***
-    // เช็คว่าเป็นโหมดที่ไม่ต้องใช้ตัวเลขนำเข้าหรือไม่ (เบิ้ล, คู่, คี่)
+    // เช็คความยาวเลข (ยกเว้นโหมด Instant)
     const isInstantMode = ['double', 'even', 'odd'].includes(currentSpecialMode);
 
     if (!isInstantMode) {
-        // ถ้าไม่ใช่โหมดพิเศษ (เช่น 3 ตัว, 2 ตัว, 19ประตู) ต้องเช็คความยาวเลข
         let requiredLen = 0;
         if (currentSpecialMode && ['19door', 'rootFront', 'rootBack'].includes(currentSpecialMode)) {
             requiredLen = 1;
         } else {
             requiredLen = (currentCategory === '3') ? 3 : (currentCategory === '2') ? 2 : 1;
         }
-
-        // ถ้าเลขไม่ครบ ให้หยุดทำงาน (ไม่เพิ่มรายการ)
         if (currentInput.length !== requiredLen) return;
     }
 
-    // 3. สร้างเลข
     const numbersToPlay = generateNumbers();
     if (numbersToPlay.length === 0) return;
 
     const listContainer = document.getElementById('bet-list');
 
-    // 4. วนลูปเพิ่มรายการ
     checkboxes.forEach(chk => {
         const typeName = chk.value;
         numbersToPlay.forEach(num => {
@@ -324,12 +298,10 @@ function addToList() {
         });
     });
 
-    // 5. เคลียร์ค่า
     currentInput = "";
     if (['19door', 'rootFront', 'rootBack'].includes(currentSpecialMode)) {
         resetSpecialMode();
     }
-    // ถ้าเป็นโหมด Instant (เบิ้ล/คู่/คี่) ให้รีเซ็ตโหมดด้วย เพื่อให้กลับมาหน้าปกติ
     if (isInstantMode) {
         resetSpecialMode();
     }
@@ -338,8 +310,7 @@ function addToList() {
     calculateTotal();
 }
 
-// --- Footer Actions ---
-
+// --- 5. ส่วนท้ายและบันทึก (Footer & Save) ---
 function calculateTotal() {
     let total = 0;
     let count = 0;
@@ -364,20 +335,19 @@ function setAllPrices() {
 function clearList() {
     const listContainer = document.getElementById('bet-list');
     if (listContainer.children.length === 0) return;
-
     if (confirm('คุณต้องการลบรายการทั้งหมดใช่หรือไม่?')) {
         listContainer.innerHTML = '';
         calculateTotal();
     }
 }
 
-// ฟังก์ชัน saveBill (เวอร์ชั่นกรองค่าว่างที่คุณขอไว้ก่อนหน้า)
+// *** ฟังก์ชัน saveBill ฉบับสมบูรณ์ (กรองค่าว่าง + เปลี่ยนหน้า) ***
 function saveBill() {
     const items = [];
     let hasError = false;
     let errorMsg = "";
 
-    // ล้างสีแจ้งเตือนเก่า
+    // ล้างสีแจ้งเตือน
     document.querySelectorAll('#bet-list .list-group-item').forEach(row => {
         row.style.backgroundColor = "";
         row.querySelector('.price-input').classList.remove('border', 'border-danger');
@@ -391,13 +361,13 @@ function saveBill() {
         const priceInput = row.querySelector('.price-input');
         const priceVal = priceInput.value;
 
-        // --- กฏ 1: ค่าว่างตัดทิ้ง ---
+        // กรองค่าว่าง
         if (numberText === "" || numberText === "_") return;
 
-        // --- กฏ 2: ตรวจความยาว ---
+        // ตรวจความยาว
         let isValidFormat = true;
         if (typeText.includes("3 ตัว") && numberText.length !== 3) isValidFormat = false;
-        else if ((typeText.includes("2 ตัว") || typeText.includes("19") || typeText.includes("รูด") || typeText.includes("เบิ้ล")) && numberText.length !== 2) isValidFormat = false;
+        else if ((typeText.includes("2 ตัว") || typeText.includes("19") || typeText.includes("รูด") || typeText.includes("เบิ้ล") || typeText.includes("คู่") || typeText.includes("คี่")) && numberText.length !== 2) isValidFormat = false;
         else if (typeText.includes("วิ่ง") && numberText.length !== 1) isValidFormat = false;
 
         if (!isValidFormat) {
@@ -407,17 +377,12 @@ function saveBill() {
             return;
         }
 
-        // --- กฏ 3: ราคา ---
         if (!priceVal || parseInt(priceVal) <= 0) {
             hasError = true;
             priceInput.classList.add('border', 'border-danger');
             if(errorMsg === "") errorMsg = "กรุณาใส่ราคาให้ครบ";
         } else {
-            items.push({
-                number: numberText,
-                type: typeText,
-                price: parseInt(priceVal)
-            });
+            items.push({ number: numberText, type: typeText, price: parseInt(priceVal) });
         }
     });
 
@@ -425,13 +390,11 @@ function saveBill() {
         alert("ไม่มีรายการที่สมบูรณ์ให้บันทึก");
         return;
     }
-
     if (hasError) {
         alert(errorMsg);
         return;
     }
 
-    // บันทึก
     const storedName = localStorage.getItem('agentName') || "ลูกค้าทั่วไป";
     const ownerName = prompt("ยืนยันชื่อลูกค้า:", storedName);
     if (ownerName === null) return; 
@@ -440,9 +403,6 @@ function saveBill() {
     const lottoName = document.getElementById('lotto-title').innerText;
     const total = items.reduce((sum, item) => sum + item.price, 0);
 
-    // ... (ส่วนโค้ดด้านบนเหมือนเดิม) ...
-
-    // 3. ส่งขึ้น Firebase
     db.collection("bills").add({
         agent: localStorage.getItem('agentName'),      
         owner: finalOwnerName,   
@@ -453,14 +413,10 @@ function saveBill() {
         dateString: new Date().toLocaleString('th-TH') 
     })
     .then(() => {
-        // --- แก้ไขตรงนี้ครับ ---
         alert(`บันทึกสำเร็จ!\nลูกค้า: ${finalOwnerName}\nยอดเงิน: ${total.toLocaleString()} บาท`);
-        
-        // ล้างหน้าจอ
         document.getElementById('bet-list').innerHTML = '';
         calculateTotal();
-
-        // ดีดไปหน้าดูประวัติทันที (ส่งค่า ?from=lotto เพื่อให้ปุ่มย้อนกลับทำงานถูก)
+        // *** สั่งเปลี่ยนหน้าตรงนี้ ***
         window.location.href = 'history.html?from=lotto';
     })
     .catch((error) => {
