@@ -14,27 +14,37 @@
     <style>
         body { font-family: 'Sarabun', sans-serif; background: #f8f9fa; padding-bottom: 100px; }
         
-        /* Footer Bar Style */
         .grand-total-bar {
             position: fixed; bottom: 0; left: 0; width: 100%;
             background: #212529; color: white;
             padding: 10px 15px; 
             box-shadow: 0 -2px 10px rgba(0,0,0,0.2); 
             z-index: 1000;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .total-box { text-align: center; cursor: pointer; }
+        .total-label { font-size: 0.8rem; color: #adb5bd; display: block; }
+        .total-value { font-size: 1.2rem; font-weight: bold; }
+        .divider { height: 40px; width: 1px; background-color: #495057; margin: 0 10px; }
+
+        /* Style สำหรับแถบคั่นวันที่ */
+        .date-separator {
+            background-color: #e9ecef;
+            color: #495057;
+            padding: 8px 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+            margin-bottom: 10px;
+            font-weight: bold;
             display: flex;
             justify-content: space-between;
             align-items: center;
+            border-left: 5px solid #0d6efd;
         }
-        .total-box { text-align: center; cursor: pointer; transition: 0.2s; }
-        .total-box:active { transform: scale(0.95); } /* Effect เวลากด */
-        .total-label { font-size: 0.8rem; color: #adb5bd; display: block; }
-        .total-value { font-size: 1.2rem; font-weight: bold; }
-        
-        .divider { height: 40px; width: 1px; background-color: #495057; margin: 0 10px; }
-
-        /* ปรับแต่ง Modal ให้ดูง่าย */
-        .list-group-item-action:hover { background-color: #f1f3f5; }
-        .date-badge { width: 100px; display: inline-block; }
+        .delete-day-btn {
+            font-size: 0.8rem;
+            padding: 2px 8px;
+        }
     </style>
 </head>
 <body>
@@ -55,41 +65,33 @@
             </button>
         </div>
 
-        <div class="accordion" id="historyAccordion">
+        <div id="history-container">
             </div>
         
         <div id="error-box" class="alert alert-danger d-none mt-3"></div>
     </div>
 
     <div class="grand-total-bar">
-        <div class="total-box flex-grow-1" onclick="showDailyBreakdown()">
-            <span class="total-label text-info">
-                <i class="fas fa-calendar-day"></i> ยอดวันนี้ <i class="fas fa-chevron-up ms-1" style="font-size: 0.6rem;"></i>
-            </span>
+        <div class="total-box flex-grow-1" onclick="showDailyModal()">
+            <span class="total-label text-info"><i class="fas fa-calendar-day"></i> ยอดวันนี้</span>
             <span class="total-value text-info" id="daily-total-display">0</span>
         </div>
-        
         <div class="divider"></div>
-
         <div class="total-box flex-grow-1">
             <span class="total-label text-warning"><i class="fas fa-coins"></i> ยอดรวมทั้งสิ้น</span>
             <span class="total-value text-warning" id="grand-total-display">0</span>
         </div>
     </div>
 
-    <div class="modal fade" id="dailyModal" tabindex="-1" aria-hidden="true">
+    <div class="modal fade" id="dailyModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header bg-info text-white">
-                    <h5 class="modal-title"><i class="fas fa-calendar-alt"></i> สรุปยอดรายวัน</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <h5 class="modal-title">สรุปยอดรายวัน</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body p-0">
-                    <ul class="list-group list-group-flush" id="daily-list-container">
-                        </ul>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary w-100" data-bs-dismiss="modal">ปิด</button>
+                    <ul class="list-group list-group-flush" id="daily-list-container"></ul>
                 </div>
             </div>
         </div>
@@ -98,24 +100,21 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
     <script>
-        // ตัวแปรเก็บข้อมูลสรุปยอดแยกตามวัน
-        let dailySummaryData = {}; 
+        let dailySummaryData = {}; // เก็บยอดเพื่อโชว์ใน Modal
 
         document.addEventListener('DOMContentLoaded', () => {
             handleBackButton();
             try {
-                if (!firebase.apps.length) showError("Firebase Config Error");
+                if (!firebase.apps.length) showError("Firebase Error");
                 else loadHistory();
             } catch (e) { showError("Error: " + e.message); }
         });
 
         function handleBackButton() {
             const params = new URLSearchParams(window.location.search);
-            const fromPage = params.get('from');
             const backLink = document.getElementById('back-link');
             const backText = document.getElementById('back-text');
-
-            if (fromPage === 'menu') {
+            if (params.get('from') === 'menu') {
                 backLink.href = 'menu.html';
                 backText.innerText = 'กลับหน้าเมนู';
             } else {
@@ -125,200 +124,250 @@
         }
 
         function loadHistory() {
-            const container = document.getElementById('historyAccordion');
-            const grandTotalDisplay = document.getElementById('grand-total-display');
-            const dailyTotalDisplay = document.getElementById('daily-total-display');
-            
+            const container = document.getElementById('history-container');
             const currentUser = localStorage.getItem('agentName');
-            if(!currentUser) {
-                window.location.href = 'index.html'; 
-                return;
-            }
+            if(!currentUser) { window.location.href = 'index.html'; return; }
 
             document.getElementById('header-title').innerHTML = `<i class="fas fa-list-alt text-primary"></i> ของ: <span class="text-dark">${currentUser}</span>`;
             container.innerHTML = '<div class="text-center mt-5"><div class="spinner-border text-primary"></div><p>กำลังโหลด...</p></div>';
 
-            db.collection("bills")
-                .where("agent", "==", currentUser) 
-                .get()
-                .then((querySnapshot) => {
+            db.collection("bills").where("agent", "==", currentUser).get()
+            .then((querySnapshot) => {
+                if (querySnapshot.empty) {
+                    container.innerHTML = '<div class="alert alert-secondary text-center py-5">ยังไม่มีข้อมูลประวัติ</div>';
+                    updateFooter(0, 0);
+                    dailySummaryData = {};
+                    return;
+                }
+
+                let bills = [];
+                querySnapshot.forEach(doc => bills.push({ id: doc.id, ...doc.data() }));
+                
+                // เรียงจาก ใหม่ -> เก่า
+                bills.sort((a, b) => b.timestamp - a.timestamp);
+
+                container.innerHTML = ''; 
+                
+                let grandTotal = 0;
+                let todayTotal = 0;
+                dailySummaryData = {};
+                
+                let lastDateStr = ""; // ตัวแปรจำวันที่ล่าสุดเพื่อทำเส้นคั่น
+
+                const today = new Date();
+                const todayKey = formatDateKey(today);
+
+                bills.forEach((bill) => {
+                    const billAmount = bill.total || 0;
+                    grandTotal += billAmount;
+
+                    // จัดการเรื่องวันที่
+                    let billDateKey = "ไม่ระบุ";
+                    let displayDate = "ไม่ระบุ";
                     
-                    if (querySnapshot.empty) {
-                        container.innerHTML = '<div class="alert alert-secondary text-center py-5">ยังไม่มีข้อมูลประวัติ</div>';
-                        grandTotalDisplay.innerText = "0";
-                        dailyTotalDisplay.innerText = "0";
+                    if (bill.timestamp) {
+                        const d = bill.timestamp.toDate();
+                        billDateKey = formatDateKey(d); // D/M/Y
+                        
+                        // เก็บยอดรายวัน
+                        if (!dailySummaryData[billDateKey]) dailySummaryData[billDateKey] = 0;
+                        dailySummaryData[billDateKey] += billAmount;
+
+                        if (billDateKey === todayKey) todayTotal += billAmount;
+                        
+                        displayDate = billDateKey;
+                        if(billDateKey === todayKey) displayDate = "วันนี้ (" + billDateKey + ")";
+                    }
+
+                    // --- สร้างเส้นแบ่งวันที่ (Date Separator) ---
+                    if (billDateKey !== lastDateStr) {
+                        const sepDiv = document.createElement('div');
+                        sepDiv.className = "date-separator";
+                        sepDiv.innerHTML = `
+                            <span><i class="far fa-calendar-alt me-2"></i> ${displayDate}</span>
+                            <button class="btn btn-outline-danger btn-sm delete-day-btn" onclick="deleteByDate('${billDateKey}')">
+                                <i class="fas fa-trash-alt"></i> ลบทั้งวัน
+                            </button>
+                        `;
+                        container.appendChild(sepDiv);
+                        lastDateStr = billDateKey;
+                    }
+
+                    // --- สร้างการ์ดบิล ---
+                    const cardHtml = createBillCard(bill);
+                    // ใช้ div หุ้มเพื่อใส่ event onclick สำหรับลบ (ต้องระวัง event bubbling)
+                    const wrapper = document.createElement('div');
+                    wrapper.innerHTML = cardHtml;
+                    container.appendChild(wrapper.firstElementChild);
+                });
+
+                updateFooter(grandTotal, todayTotal);
+            })
+            .catch(err => showError(err.message));
+        }
+
+        function createBillCard(bill) {
+            const billId = `bill-${bill.id}`;
+            let itemRows = '';
+            if(bill.items) {
+                bill.items.forEach(item => {
+                    itemRows += `<tr><td class="text-start ps-4">${item.number}</td><td><span class="badge bg-light text-dark border">${item.type}</span></td><td class="text-end pe-4 fw-bold text-primary">${item.price}</td></tr>`;
+                });
+            }
+            
+            // ปุ่มลบทีละบิล (ใส่ event.stopPropagation เพื่อไม่ให้ Accordion เด้ง)
+            const deleteBtn = `<button class="btn btn-sm btn-danger ms-2 z-3" style="position:relative;" onclick="event.stopPropagation(); deleteSingleBill('${bill.id}')"><i class="fas fa-trash"></i></button>`;
+
+            return `
+                <div class="accordion-item mb-2 border shadow-sm">
+                    <h2 class="accordion-header">
+                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#${billId}">
+                            <div class="w-100 d-flex flex-column flex-md-row justify-content-between pe-3">
+                                <div>
+                                    <div class="fw-bold text-dark"><i class="fas fa-user me-1"></i> ${bill.owner || '-'}</div>
+                                    <div class="text-muted small">
+                                        <span class="badge bg-info text-dark me-1">${bill.lottoName || 'หวย'}</span>
+                                        <i class="far fa-clock ms-1"></i> ${bill.dateString}
+                                    </div>
+                                </div>
+                                <div class="text-md-end mt-1 mt-md-0 d-flex align-items-center justify-content-end">
+                                    <span class="fw-bold text-success fs-5 me-2">${(bill.total || 0).toLocaleString()} ฿</span>
+                                    ${deleteBtn}
+                                </div>
+                            </div>
+                        </button>
+                    </h2>
+                    <div id="${billId}" class="accordion-collapse collapse">
+                        <div class="accordion-body p-0">
+                            <table class="table table-striped table-hover mb-0 text-center align-middle">
+                                <thead class="table-light small"><tr><th class="text-start ps-4">เลข</th><th>ประเภท</th><th class="text-end pe-4">ราคา</th></tr></thead>
+                                <tbody>${itemRows}</tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- ฟังก์ชันลบ ---
+
+        // 1. ลบบิลเดียว
+        function deleteSingleBill(docId) {
+            if(confirm("ต้องการลบบิลนี้ใช่หรือไม่?")) {
+                db.collection("bills").doc(docId).delete()
+                .then(() => {
+                    // ไม่ต้อง Alert รำคาญ โหลดใหม่เลย
+                    loadHistory(); 
+                })
+                .catch(err => alert("ลบไม่สำเร็จ: " + err.message));
+            }
+        }
+
+        // 2. ลบทั้งวัน
+        function deleteByDate(targetDateKey) {
+            const currentUser = localStorage.getItem('agentName');
+            if(confirm(`ยืนยันลบบิลทั้งหมดของวันที่ "${targetDateKey}" ? (กู้คืนไม่ได้)`)) {
+                
+                // ต้องคิวรี่มาเช็ควันที่ทีละตัว (เพราะเราเก็บ timestamp ไม่ได้เก็บ field วันที่แยกชัดเจนในการ query)
+                db.collection("bills").where("agent", "==", currentUser).get()
+                .then((querySnapshot) => {
+                    const batch = db.batch();
+                    let count = 0;
+
+                    querySnapshot.forEach((doc) => {
+                        const bill = doc.data();
+                        if (bill.timestamp) {
+                            const d = bill.timestamp.toDate();
+                            const key = formatDateKey(d);
+                            
+                            // ถ้าวันที่ตรงกับเป้าหมาย ให้ลบ
+                            if (key === targetDateKey) {
+                                batch.delete(doc.ref);
+                                count++;
+                            }
+                        }
+                    });
+
+                    if (count === 0) {
+                        alert("ไม่พบข้อมูลของวันที่เลือก");
                         return;
                     }
 
-                    let bills = [];
-                    querySnapshot.forEach(doc => {
-                        bills.push({ id: doc.id, ...doc.data() });
-                    });
-
-                    // เรียงบิลจากใหม่ไปเก่า
-                    bills.sort((a, b) => b.timestamp - a.timestamp);
-
-                    container.innerHTML = ''; 
-                    
-                    // รีเซ็ตตัวแปรคำนวณ
-                    let grandTotal = 0;
-                    let todayTotal = 0;
-                    dailySummaryData = {}; // ล้างข้อมูลเก่า
-
-                    const today = new Date();
-                    const todayStr = today.getDate() + "/" + (today.getMonth() + 1) + "/" + (today.getFullYear() + 543); // รูปแบบไทย D/M/Y
-
-                    bills.forEach((bill) => {
-                        const billId = `bill-${bill.id}`;
-                        const billAmount = bill.total || 0;
-                        grandTotal += billAmount;
-
-                        // --- Logic รวมยอดรายวัน ---
-                        if (bill.timestamp) {
-                            const d = bill.timestamp.toDate();
-                            // แปลงเป็นรูปแบบวันที่ไทย D/M/Y (เช่น 25/11/2568)
-                            const dateKey = d.getDate() + "/" + (d.getMonth() + 1) + "/" + (d.getFullYear() + 543);
-                            
-                            // บวกยอดสะสมลงใน object ตามวันที่
-                            if (!dailySummaryData[dateKey]) {
-                                dailySummaryData[dateKey] = 0;
-                            }
-                            dailySummaryData[dateKey] += billAmount;
-
-                            // ถ้าเป็นวันนี้ ให้เก็บเข้าตัวแปร todayTotal ด้วย
-                            if (dateKey === todayStr) {
-                                todayTotal += billAmount;
-                            }
-                        }
-
-                        // --- สร้าง HTML รายการบิล (เหมือนเดิม) ---
-                        let itemRows = '';
-                        if(bill.items) {
-                            bill.items.forEach(item => {
-                                itemRows += `
-                                    <tr>
-                                        <td class="text-start ps-4">${item.number}</td>
-                                        <td><span class="badge bg-light text-dark border">${item.type}</span></td>
-                                        <td class="text-end pe-4 text-primary fw-bold">${item.price}</td>
-                                    </tr>
-                                `;
-                            });
-                        }
-                        const dateShow = bill.dateString || "ไม่ระบุเวลา";
-
-                        const html = `
-                            <div class="accordion-item mb-2 border shadow-sm">
-                                <h2 class="accordion-header">
-                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#${billId}">
-                                        <div class="w-100 d-flex flex-column flex-md-row justify-content-between pe-3">
-                                            <div>
-                                                <div class="fw-bold text-dark"><i class="fas fa-user me-1"></i> ${bill.owner || '-'}</div>
-                                                <div class="text-muted small">
-                                                    <span class="badge bg-info text-dark me-1">${bill.lottoName || 'หวย'}</span>
-                                                    ${dateShow}
-                                                </div>
-                                            </div>
-                                            <div class="text-md-end">
-                                                <span class="fw-bold text-success fs-5">${billAmount.toLocaleString()} ฿</span>
-                                            </div>
-                                        </div>
-                                    </button>
-                                </h2>
-                                <div id="${billId}" class="accordion-collapse collapse" data-bs-parent="#historyAccordion">
-                                    <div class="accordion-body p-0">
-                                        <table class="table table-striped table-hover mb-0 text-center align-middle">
-                                            <thead class="table-light text-secondary small">
-                                                <tr><th class="text-start ps-4">เลข</th><th>ประเภท</th><th class="text-end pe-4">ราคา</th></tr>
-                                            </thead>
-                                            <tbody>${itemRows}</tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                        container.innerHTML += html;
-                    });
-
-                    // แสดงยอดรวม
-                    grandTotalDisplay.innerText = grandTotal.toLocaleString() + " ฿";
-                    dailyTotalDisplay.innerText = todayTotal.toLocaleString() + " ฿";
+                    return batch.commit();
                 })
-                .catch((error) => {
-                    console.error("Error:", error);
-                    showError("โหลดข้อมูลไม่ได้: " + error.message);
-                });
+                .then(() => {
+                    alert("ลบเรียบร้อย");
+                    loadHistory(); // โหลดใหม่ ค่าสรุปจะถูกคำนวณใหม่เอง
+                })
+                .catch(err => alert("Error: " + err.message));
+            }
         }
 
-        // --- ฟังก์ชันแสดง Modal สรุปยอดรายวัน ---
-        function showDailyBreakdown() {
-            const listContainer = document.getElementById('daily-list-container');
-            listContainer.innerHTML = '';
+        // 3. ลบทั้งหมด (ล้างเกลี้ยง)
+        function clearHistory() {
+            const currentUser = localStorage.getItem('agentName');
+            if (confirm(`ยืนยันล้างประวัติ "ทั้งหมด" ของ ${currentUser} ?`)) {
+                db.collection("bills").where("agent", "==", currentUser).get()
+                .then((qs) => {
+                    const batch = db.batch();
+                    qs.forEach(doc => batch.delete(doc.ref));
+                    return batch.commit();
+                })
+                .then(() => {
+                    dailySummaryData = {}; // ล้างตัวแปรเก็บยอด
+                    loadHistory();
+                });
+            }
+        }
 
-            // ดึงวันที่ทั้งหมดออกมาเป็น Array
+        // --- Helper Functions ---
+        function formatDateKey(dateObj) {
+            return dateObj.getDate() + "/" + (dateObj.getMonth() + 1) + "/" + (dateObj.getFullYear() + 543);
+        }
+
+        function updateFooter(grand, today) {
+            document.getElementById('grand-total-display').innerText = grand.toLocaleString() + " ฿";
+            document.getElementById('daily-total-display').innerText = today.toLocaleString() + " ฿";
+        }
+
+        function showDailyModal() {
+            const list = document.getElementById('daily-list-container');
+            list.innerHTML = '';
             const dates = Object.keys(dailySummaryData);
-
+            
             if (dates.length === 0) {
-                listContainer.innerHTML = '<li class="list-group-item text-center text-muted py-3">ไม่มีข้อมูลยอดขาย</li>';
+                list.innerHTML = '<li class="list-group-item text-center">ไม่มีข้อมูล</li>';
             } else {
-                // เรียงวันที่จาก ใหม่ -> เก่า (Custom Sort สำหรับสตริง DD/MM/YYYY)
+                // เรียงวันที่ (ถอยหลัง)
                 dates.sort((a, b) => {
                     const [d1, m1, y1] = a.split('/').map(Number);
                     const [d2, m2, y2] = b.split('/').map(Number);
-                    // เทียบปี -> เดือน -> วัน (ถอยหลัง)
                     if (y1 !== y2) return y2 - y1;
                     if (m1 !== m2) return m2 - m1;
                     return d2 - d1;
                 });
 
-                // สร้างรายการใน Modal
-                dates.forEach(date => {
-                    const amount = dailySummaryData[date];
-                    
-                    // เช็คว่าเป็นวันนี้หรือไม่ เพื่อใส่สีให้เด่น
-                    const today = new Date();
-                    const todayStr = today.getDate() + "/" + (today.getMonth() + 1) + "/" + (today.getFullYear() + 543);
-                    const isToday = (date === todayStr);
-                    
-                    const highlightClass = isToday ? "bg-info bg-opacity-10 fw-bold" : "";
-                    const dateLabel = isToday ? `${date} (วันนี้)` : date;
+                const todayKey = formatDateKey(new Date());
 
-                    const itemHtml = `
-                        <li class="list-group-item d-flex justify-content-between align-items-center py-3 ${highlightClass}">
-                            <span>
-                                <i class="far fa-calendar-alt text-secondary me-2"></i> 
-                                <span class="date-badge">${dateLabel}</span>
-                            </span>
-                            <span class="fs-5 text-success font-monospace">${amount.toLocaleString()} ฿</span>
+                dates.forEach(d => {
+                    const isToday = (d === todayKey);
+                    const label = isToday ? `${d} (วันนี้)` : d;
+                    const cls = isToday ? "bg-info bg-opacity-10 fw-bold" : "";
+                    
+                    list.innerHTML += `
+                        <li class="list-group-item d-flex justify-content-between ${cls}">
+                            <span>${label}</span>
+                            <span>${dailySummaryData[d].toLocaleString()} ฿</span>
                         </li>
                     `;
-                    listContainer.innerHTML += itemHtml;
                 });
             }
-
-            // เปิด Modal (ใช้ Bootstrap API)
-            const modal = new bootstrap.Modal(document.getElementById('dailyModal'));
-            modal.show();
-        }
-
-        function clearHistory() {
-            const currentUser = localStorage.getItem('agentName');
-            if (confirm(`ยืนยันลบประวัติ "บน Cloud" ทั้งหมดของ ${currentUser} ?`)) {
-                db.collection("bills").where("agent", "==", currentUser).get()
-                .then((querySnapshot) => {
-                    const batch = db.batch();
-                    querySnapshot.forEach((doc) => { batch.delete(doc.ref); });
-                    return batch.commit();
-                })
-                .then(() => { alert("ลบข้อมูลเรียบร้อย"); loadHistory(); })
-                .catch((error) => { alert("ลบไม่สำเร็จ: " + error.message); });
-            }
+            new bootstrap.Modal(document.getElementById('dailyModal')).show();
         }
 
         function showError(msg) {
-            const box = document.getElementById('error-box');
-            box.innerText = msg;
-            box.classList.remove('d-none');
-            document.getElementById('historyAccordion').innerHTML = '';
+            document.getElementById('error-box').innerText = msg;
+            document.getElementById('error-box').classList.remove('d-none');
         }
     </script>
 </body>
