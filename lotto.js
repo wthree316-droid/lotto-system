@@ -1,7 +1,10 @@
 let currentInput = "";
 let currentCategory = "3";
 let isReverseMode = false;
-let currentSpecialMode = null; // เก็บโหมดพิเศษที่เลือก
+let currentSpecialMode = null; 
+
+// ตัวแปรสำหรับจัดการ Timeout การกดรัว
+let autoSubmitTimer = null; 
 
 const subOptionsData = {
     '3': ['3 ตัวตรง', '3 ตัวโต๊ด', '3 ตัวล่าง', '3 ตัวหน้า'],
@@ -10,7 +13,7 @@ const subOptionsData = {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-    // 1. โหลดชื่อหวยจากหน้า Menu (ถ้ามี)
+    // 1. โหลดชื่อหวยจากหน้า Menu
     const lottoName = localStorage.getItem('selectedLottoName');
     const lottoTime = localStorage.getItem('selectedLottoTime');
     
@@ -34,7 +37,6 @@ function changeCategory(type) {
     updateDisplay();
     updateBadge();
 
-    // สร้าง Checkbox ตัวเลือกย่อย
     const container = document.getElementById('sub-options');
     container.innerHTML = '';
     subOptionsData[type].forEach((opt, index) => {
@@ -43,7 +45,7 @@ function changeCategory(type) {
         input.className = 'btn-check sub-opt-check';
         input.id = `sub-${index}`;
         input.value = opt;
-        if(index === 0) input.checked = true; // เลือกตัวแรกเสมอ
+        if(index === 0) input.checked = true;
 
         const label = document.createElement('label');
         label.className = 'btn btn-outline-secondary flex-grow-1';
@@ -54,7 +56,6 @@ function changeCategory(type) {
         container.appendChild(label);
     });
 
-    // เปิด/ปิด พื้นที่ปุ่มพิเศษ (ใช้ได้แค่ 2 ตัว)
     const specialWrapper = document.getElementById('special-options-wrapper');
     if (type === '2') {
         specialWrapper.classList.remove('disabled-area');
@@ -66,7 +67,6 @@ function changeCategory(type) {
 function selectSpecial(mode) {
     if (currentCategory !== '2') return;
 
-    // ถ้ากดซ้ำให้ยกเลิก
     if (currentSpecialMode === mode) {
         resetSpecialMode();
         return;
@@ -75,7 +75,6 @@ function selectSpecial(mode) {
     currentSpecialMode = mode;
     currentInput = ""; 
     
-    // จัดการสีปุ่ม: ล้างสีเก่า -> ใส่สีใหม่
     document.querySelectorAll('.special-btn').forEach(btn => {
         btn.classList.remove('active', 'btn-primary', 'text-white');
         btn.classList.add('btn-outline-secondary');
@@ -85,7 +84,6 @@ function selectSpecial(mode) {
     clickedBtn.classList.remove('btn-outline-secondary');
     clickedBtn.classList.add('active', 'btn-primary', 'text-white');
 
-    // ปิดระบบกลับเลขเมื่อใช้โหมดพิเศษ
     const reverseBtn = document.getElementById('btn-reverse');
     reverseBtn.checked = false;
     reverseBtn.disabled = true;
@@ -93,24 +91,26 @@ function selectSpecial(mode) {
     
     updateBadge();
 
-    // ถ้าเป็นโหมดไม่ต้องกดเลข (เบิ้ล/คู่/คี่) ให้ทำงานเลย
     if (['double', 'even', 'odd'].includes(mode)) {
-        addToList();
+        addToList(); // กลุ่มนี้ไม่ต้องรอเลข กดปุ๊บมาปั๊บ
         resetSpecialMode();
     }
 }
 
 function resetSpecialMode() {
     currentSpecialMode = null;
-    
-    // คืนค่าสีปุ่มเป็นสีเทาทั้งหมด
     document.querySelectorAll('.special-btn').forEach(btn => {
         btn.classList.remove('active', 'btn-primary', 'text-white');
         btn.classList.add('btn-outline-secondary');
     });
     
-    // ปลดล็อคปุ่มกลับเลข
-    document.getElementById('btn-reverse').disabled = false;
+    const revBtn = document.getElementById('btn-reverse');
+    if(revBtn) {
+        revBtn.disabled = false;
+        revBtn.checked = false;
+    }
+    isReverseMode = false;
+    
     document.getElementById('special-badge').classList.add('d-none');
     updateBadge();
 }
@@ -144,28 +144,33 @@ function updateBadge() {
     }
 }
 
-// --- Keypad & Input Logic ---
+// --- Keypad & Input Logic (แก้บั๊กกดรัวตรงนี้) ---
 
 function pressKey(num) {
+    // 1. หาจำนวนหลักที่ต้องการ
     let maxLen = 0;
-    
-    // กำหนดจำนวนหลักที่ต้องพิมพ์
     if (currentSpecialMode && ['19door', 'rootFront', 'rootBack'].includes(currentSpecialMode)) {
         maxLen = 1;
     } else {
         maxLen = (currentCategory === '3') ? 3 : (currentCategory === '2') ? 2 : 1;
     }
     
+    // 2. ถ้าเลขยังไม่ครบ ก็เติมเข้าไป
     if (currentInput.length < maxLen) {
         currentInput += num;
         updateDisplay();
     }
 
-    // Auto Submit เมื่อครบหลัก
+    // 3. ป้องกันการ Submit ซ้ำซ้อน (Clear Timeout เก่าทิ้งเสมอเมื่อมีการกดปุ่ม)
+    if (autoSubmitTimer) {
+        clearTimeout(autoSubmitTimer);
+    }
+
+    // 4. ถ้าครบหลักแล้ว ให้ตั้งเวลา Submit ใหม่
     if (currentInput.length === maxLen) {
-        setTimeout(() => {
+        autoSubmitTimer = setTimeout(() => {
             addToList();
-        }, 150);
+        }, 200); // หน่วง 200ms
     }
 }
 
@@ -196,33 +201,34 @@ function generateNumbers() {
     let numbers = [];
     
     if (currentSpecialMode) {
-        const n = currentInput; // string
-        
+        const n = currentInput;
+        // ป้องกัน n เป็นค่าว่าง
+        if(n === "") return [];
+
         switch (currentSpecialMode) {
-            case '19door': // มีเลข n อยู่ในหลักสิบหรือหน่วย
+            case '19door': 
                 for (let i = 0; i <= 99; i++) {
                     let s = i.toString().padStart(2, '0');
                     if (s.includes(n)) numbers.push(s);
                 }
                 break;
-            case 'rootFront': // หลักสิบเป็น n
+            case 'rootFront': 
                 for (let i = 0; i <= 9; i++) numbers.push(n + i);
                 break;
-            case 'rootBack': // หลักหน่วยเป็น n
+            case 'rootBack': 
                 for (let i = 0; i <= 9; i++) numbers.push(i + n);
                 break;
-            case 'double': // 00, 11...
+            case 'double': 
                 for (let i = 0; i <= 9; i++) numbers.push(i + "" + i);
                 break;
-            case 'even': // เลขคู่
+            case 'even': 
                 for (let i = 0; i <= 99; i++) if (i % 2 === 0) numbers.push(i.toString().padStart(2, '0'));
                 break;
-            case 'odd': // เลขคี่
+            case 'odd': 
                 for (let i = 0; i <= 99; i++) if (i % 2 !== 0) numbers.push(i.toString().padStart(2, '0'));
                 break;
         }
     } else {
-        // โหมดปกติ + กลับเลข
         if (isReverseMode) {
             numbers = getPermutations(currentInput);
         } else {
@@ -256,21 +262,43 @@ function getPermutations(numStr) {
     return Array.from(results);
 }
 
+// --- ฟังก์ชันเพิ่มลงรายการ (แก้บั๊กเพิ่มค่าว่างตรงนี้) ---
 function addToList() {
+    // 1. เช็ค Checkbox
     const checkboxes = document.querySelectorAll('.sub-opt-check:checked');
     if (checkboxes.length === 0) {
-        alert('กรุณาเลือกประเภทอย่างน้อย 1 อย่าง');
+        // ถ้ายังไม่ได้เลือกประเภท อย่าเพิ่งเตือนตอน Auto Submit (มันจะน่ารำคาญ)
         return;
     }
 
+    // 2. *** กรองเข้มข้น: ตรวจสอบความยาวเลขก่อนทำต่อ ***
+    let requiredLen = 0;
+    if (currentSpecialMode && ['19door', 'rootFront', 'rootBack'].includes(currentSpecialMode)) {
+        requiredLen = 1;
+    } else if (['double', 'even', 'odd'].includes(currentSpecialMode)) {
+        requiredLen = 0; // พวกนี้ไม่ต้องมีเลข input
+    } else {
+        requiredLen = (currentCategory === '3') ? 3 : (currentCategory === '2') ? 2 : 1;
+    }
+
+    // ถ้าไม่ใช่โหมดพิเศษแบบไม่ต้องกดเลข แล้วเลขไม่ครบตามจำนวน -> หยุดทันที! ห้ามเพิ่ม!
+    if (requiredLen > 0 && currentInput.length !== requiredLen) {
+        return; 
+    }
+
+    // 3. สร้างเลข
     const numbersToPlay = generateNumbers();
     if (numbersToPlay.length === 0) return;
 
     const listContainer = document.getElementById('bet-list');
 
+    // 4. วนลูปเพิ่ม
     checkboxes.forEach(chk => {
         const typeName = chk.value;
         numbersToPlay.forEach(num => {
+            // ป้องกันเลขว่างหลุดเข้ามา
+            if(!num || num.trim() === "") return;
+
             const itemDiv = document.createElement('div');
             itemDiv.className = "list-group-item d-flex align-items-center p-2 border-bottom animate-fade";
             itemDiv.innerHTML = `
@@ -288,6 +316,7 @@ function addToList() {
         });
     });
 
+    // 5. เคลียร์ค่าหลังเพิ่มสำเร็จ
     currentInput = "";
     if (['19door', 'rootFront', 'rootBack'].includes(currentSpecialMode)) {
         resetSpecialMode();
@@ -329,65 +358,48 @@ function clearList() {
     }
 }
 
-// ฟังก์ชัน saveBill แบบ Firebase
+// ฟังก์ชัน saveBill (เวอร์ชั่นกรองค่าว่างที่คุณขอไว้ก่อนหน้า)
 function saveBill() {
     const items = [];
     let hasError = false;
     let errorMsg = "";
 
-    // 1. ล้างการแจ้งเตือนเก่าก่อน (ถ้ามี)
+    // ล้างสีแจ้งเตือนเก่า
     document.querySelectorAll('#bet-list .list-group-item').forEach(row => {
-        row.style.backgroundColor = ""; // ล้างสีพื้นหลัง
-        row.querySelector('.price-input').classList.remove('border', 'border-danger'); // ล้างขอบแดง
+        row.style.backgroundColor = "";
+        row.querySelector('.price-input').classList.remove('border', 'border-danger');
     });
 
     const rows = document.querySelectorAll('#bet-list .list-group-item');
 
-    // วนลูปเช็คทีละรายการ
     rows.forEach(row => {
-        // ดึงค่าจากหน้าจอ
         let numberText = row.children[0].innerText.trim();
         let typeText = row.children[1].innerText.trim();
         const priceInput = row.querySelector('.price-input');
         const priceVal = priceInput.value;
 
-        // --- กฏข้อที่ 1: ถ้าเป็นค่าว่าง ให้ "ตัดทิ้งเลย" ---
-        if (numberText === "" || numberText === "_" || numberText === "undefined") {
-            // return ตรงนี้คือข้ามการทำงานของ "บรรทัดนี้" ไปเลย (Skip) 
-            // ไม่เช็คราคา ไม่เก็บข้อมูล เหมือนบรรทัดนี้ไม่มีตัวตน
-            return; 
-        }
+        // --- กฏ 1: ค่าว่างตัดทิ้ง ---
+        if (numberText === "" || numberText === "_") return;
 
-        // --- กฏข้อที่ 2: ตรวจสอบประเภทเลข (Validation) ---
+        // --- กฏ 2: ตรวจความยาว ---
         let isValidFormat = true;
-
-        // ถ้าเป็นหมวด 3 ตัว -> เลขต้องมี 3 หลัก
-        if (typeText.includes("3 ตัว")) {
-            if (numberText.length !== 3) isValidFormat = false;
-        } 
-        // ถ้าเป็นหมวด 2 ตัว (รวมถึง 19 ประตู, รูด, เบิ้ล, คู่คี่) -> เลขต้องมี 2 หลัก
-        else if (typeText.includes("2 ตัว") || typeText.includes("19") || typeText.includes("รูด") || typeText.includes("เบิ้ล") || typeText.includes("คู่") || typeText.includes("คี่")) {
-            if (numberText.length !== 2) isValidFormat = false;
-        }
-        // ถ้าเป็นหมวด เลขวิ่ง -> เลขต้องมี 1 หลัก
-        else if (typeText.includes("วิ่ง")) {
-            if (numberText.length !== 1) isValidFormat = false;
-        }
+        if (typeText.includes("3 ตัว") && numberText.length !== 3) isValidFormat = false;
+        else if ((typeText.includes("2 ตัว") || typeText.includes("19") || typeText.includes("รูด") || typeText.includes("เบิ้ล")) && numberText.length !== 2) isValidFormat = false;
+        else if (typeText.includes("วิ่ง") && numberText.length !== 1) isValidFormat = false;
 
         if (!isValidFormat) {
             hasError = true;
-            row.style.backgroundColor = "#ffe6e6"; // ไฮไลท์บรรทัดที่เป็นปัญหาด้วยสีแดงอ่อน
-            errorMsg = `พบรายการผิดประเภท: "${typeText}" แต่เลขคือ "${numberText}" (จำนวนหลักไม่ถูกต้อง)`;
-            return; // หยุดการทำงานบรรทัดนี้ (ไม่บันทึก)
+            row.style.backgroundColor = "#ffe6e6";
+            errorMsg = `เลขผิดประเภท: ${numberText} (${typeText})`;
+            return;
         }
 
-        // --- กฏข้อที่ 3: ตรวจสอบราคา ---
+        // --- กฏ 3: ราคา ---
         if (!priceVal || parseInt(priceVal) <= 0) {
             hasError = true;
-            priceInput.classList.add('border', 'border-danger'); // ทำขอบแดงที่ช่องราคา
-            if(errorMsg === "") errorMsg = "กรุณาใส่ราคาให้ครบทุกรายการ";
+            priceInput.classList.add('border', 'border-danger');
+            if(errorMsg === "") errorMsg = "กรุณาใส่ราคาให้ครบ";
         } else {
-            // ผ่านทุกด่าน! เก็บเข้าตะกร้า
             items.push({
                 number: numberText,
                 type: typeText,
@@ -396,21 +408,17 @@ function saveBill() {
         }
     });
 
-    // --- สรุปผลการตรวจสอบ ---
-
-    // 1. ถ้ากรองค่าว่างออกหมดแล้ว ไม่เหลือรายการเลย
     if (items.length === 0 && !hasError) {
-        alert("ไม่มีรายการที่สมบูรณ์ให้บันทึก (ค่าว่างถูกตัดออกหมดแล้ว)");
+        alert("ไม่มีรายการที่สมบูรณ์ให้บันทึก");
         return;
     }
 
-    // 2. ถ้าเจอ Error (เช่น เลขผิดหลัก หรือ ไม่ใส่ราคา)
     if (hasError) {
-        alert(errorMsg); // แจ้งเตือน
-        return; // ไม่บันทึก
+        alert(errorMsg);
+        return;
     }
 
-    // 3. ผ่านหมด -> เริ่มกระบวนการบันทึก
+    // บันทึก
     const storedName = localStorage.getItem('agentName') || "ลูกค้าทั่วไป";
     const ownerName = prompt("ยืนยันชื่อลูกค้า:", storedName);
     if (ownerName === null) return; 
@@ -419,7 +427,6 @@ function saveBill() {
     const lottoName = document.getElementById('lotto-title').innerText;
     const total = items.reduce((sum, item) => sum + item.price, 0);
 
-    // ส่งขึ้น Firebase
     db.collection("bills").add({
         agent: localStorage.getItem('agentName'),      
         owner: finalOwnerName,   
@@ -430,12 +437,12 @@ function saveBill() {
         dateString: new Date().toLocaleString('th-TH') 
     })
     .then(() => {
-        alert(`บันทึกสำเร็จ!\nลูกค้า: ${finalOwnerName}\nจำนวน: ${items.length} รายการ`);
-        document.getElementById('bet-list').innerHTML = ''; // ล้างหน้าจอ
+        alert(`บันทึกสำเร็จ!\nลูกค้า: ${finalOwnerName}`);
+        document.getElementById('bet-list').innerHTML = '';
         calculateTotal();
     })
     .catch((error) => {
         console.error("Error:", error);
-        alert("บันทึกไม่สำเร็จ: " + error.message);
+        alert("บันทึกไม่สำเร็จ");
     });
 }
