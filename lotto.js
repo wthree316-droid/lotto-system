@@ -15,15 +15,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const lottoTime = localStorage.getItem('selectedLottoTime');
     
     if (lottoName) {
-        document.getElementById('lotto-title').innerText = lottoName;
-        document.getElementById('lotto-info').innerText = "ปิดรับ: " + lottoTime;
-    } else {
-        document.getElementById('lotto-title').innerText = "ทดสอบระบบ";
+        const titleEl = document.getElementById('lotto-title');
+        if(titleEl) titleEl.innerText = lottoName;
+        
+        const infoEl = document.getElementById('lotto-info');
+        if(infoEl) infoEl.innerText = "ปิดรับ: " + lottoTime;
     }
     changeCategory('3');
 });
 
-// --- 1. ส่วนจัดการหมวดหมู่ ---
+// --- 1. Category Logic ---
 function changeCategory(type) {
     currentCategory = type;
     currentInput = "";
@@ -32,29 +33,30 @@ function changeCategory(type) {
     updateBadge();
 
     const container = document.getElementById('sub-options');
-    container.innerHTML = '';
-    subOptionsData[type].forEach((opt, index) => {
-        const input = document.createElement('input');
-        input.type = 'checkbox';
-        input.className = 'btn-check sub-opt-check';
-        input.id = `sub-${index}`;
-        input.value = opt;
-        if(index === 0) input.checked = true;
+    if (container) {
+        container.innerHTML = '';
+        subOptionsData[type].forEach((opt, index) => {
+            const input = document.createElement('input');
+            input.type = 'checkbox';
+            input.className = 'btn-check sub-opt-check';
+            input.id = `sub-${index}`;
+            input.value = opt;
+            if(index === 0) input.checked = true;
 
-        const label = document.createElement('label');
-        label.className = 'btn btn-outline-secondary flex-grow-1';
-        label.htmlFor = `sub-${index}`;
-        label.innerText = opt;
+            const label = document.createElement('label');
+            label.className = 'btn btn-outline-secondary flex-grow-1';
+            label.htmlFor = `sub-${index}`;
+            label.innerText = opt;
 
-        container.appendChild(input);
-        container.appendChild(label);
-    });
+            container.appendChild(input);
+            container.appendChild(label);
+        });
+    }
 
     const specialWrapper = document.getElementById('special-options-wrapper');
-    if (type === '2') {
-        specialWrapper.classList.remove('disabled-area');
-    } else {
-        specialWrapper.classList.add('disabled-area');
+    if (specialWrapper) {
+        if (type === '2') specialWrapper.classList.remove('disabled-area');
+        else specialWrapper.classList.add('disabled-area');
     }
 }
 
@@ -79,13 +81,14 @@ function selectSpecial(mode) {
     clickedBtn.classList.add('active', 'btn-primary', 'text-white');
 
     const reverseBtn = document.getElementById('btn-reverse');
-    reverseBtn.checked = false;
-    reverseBtn.disabled = true;
+    if(reverseBtn) {
+        reverseBtn.checked = false;
+        reverseBtn.disabled = true;
+    }
     isReverseMode = false;
     
     updateBadge();
 
-    // ถ้าเป็นโหมด Instant ให้ทำงานเลย
     if (['double', 'even', 'odd'].includes(mode)) {
         addToList(); 
     }
@@ -105,12 +108,15 @@ function resetSpecialMode() {
     }
     isReverseMode = false;
     
-    document.getElementById('special-badge').classList.add('d-none');
+    const spBadge = document.getElementById('special-badge');
+    if(spBadge) spBadge.classList.add('d-none');
+    
     updateBadge();
 }
 
 function toggleReverse() {
-    isReverseMode = document.getElementById('btn-reverse').checked;
+    const revBtn = document.getElementById('btn-reverse');
+    if(revBtn) isReverseMode = revBtn.checked;
     updateBadge();
 }
 
@@ -118,27 +124,31 @@ function updateBadge() {
     const badge = document.getElementById('mode-badge');
     const spBadge = document.getElementById('special-badge');
 
-    if (isReverseMode) {
-        badge.className = "position-absolute top-0 start-0 m-2 badge bg-danger";
-        badge.innerText = "กลับเลข ON";
-    } else {
-        badge.className = "position-absolute top-0 start-0 m-2 badge bg-secondary";
-        badge.innerText = (currentCategory==='3'?'3 ตัว':currentCategory==='2'?'2 ตัว':'เลขวิ่ง');
+    if(badge) {
+        if (isReverseMode) {
+            badge.className = "position-absolute top-0 start-0 m-2 badge bg-danger";
+            badge.innerText = "กลับเลข ON";
+        } else {
+            badge.className = "position-absolute top-0 start-0 m-2 badge bg-secondary";
+            badge.innerText = (currentCategory==='3'?'3 ตัว':currentCategory==='2'?'2 ตัว':'เลขวิ่ง');
+        }
     }
 
-    if (currentSpecialMode && ['19door','rootFront','rootBack'].includes(currentSpecialMode)) {
-        spBadge.classList.remove('d-none');
-        let text = "";
-        if(currentSpecialMode === '19door') text = "19 ประตู (กด 1 ตัว)";
-        if(currentSpecialMode === 'rootFront') text = "รูดหน้า (กด 1 ตัว)";
-        if(currentSpecialMode === 'rootBack') text = "รูดหลัง (กด 1 ตัว)";
-        spBadge.innerText = text;
-    } else {
-        spBadge.classList.add('d-none');
+    if(spBadge) {
+        if (currentSpecialMode && ['19door','rootFront','rootBack'].includes(currentSpecialMode)) {
+            spBadge.classList.remove('d-none');
+            let text = "";
+            if(currentSpecialMode === '19door') text = "19 ประตู (กด 1 ตัว)";
+            if(currentSpecialMode === 'rootFront') text = "รูดหน้า (กด 1 ตัว)";
+            if(currentSpecialMode === 'rootBack') text = "รูดหลัง (กด 1 ตัว)";
+            spBadge.innerText = text;
+        } else {
+            spBadge.classList.add('d-none');
+        }
     }
 }
 
-// --- 2. ส่วนจัดการปุ่มกด (ใส่ Timer กันกดรัว) ---
+// --- 2. Keypad Logic ---
 function pressKey(num) {
     let maxLen = 0;
     if (currentSpecialMode && ['19door', 'rootFront', 'rootBack'].includes(currentSpecialMode)) {
@@ -152,7 +162,6 @@ function pressKey(num) {
         updateDisplay();
     }
 
-    // กันเบิ้ล
     if (autoSubmitTimer) clearTimeout(autoSubmitTimer);
 
     if (currentInput.length === maxLen) {
@@ -175,25 +184,23 @@ function clearAll() {
 
 function updateDisplay() {
     const display = document.getElementById('current-input');
-    display.innerText = currentInput === "" ? "_" : currentInput;
-    display.className = currentInput === "" ? "text-secondary" : "text-warning";
+    if(display) {
+        display.innerText = currentInput === "" ? "_" : currentInput;
+        display.className = currentInput === "" ? "text-secondary" : "text-warning";
+    }
 }
 
 function forceAdd() {
     if(currentInput.length > 0) addToList();
 }
 
-// --- 3. ส่วนคำนวณเลข (Generator) ---
+// --- 3. Generator ---
 function generateNumbers() {
     let numbers = [];
     
     if (currentSpecialMode) {
         const n = currentInput;
-
-        // เช็คเฉพาะโหมดที่ต้องใช้เลข (19ประตู/รูด) ถ้าไม่มีเลขให้ว่างไว้
-        if (['19door', 'rootFront', 'rootBack'].includes(currentSpecialMode) && n === "") {
-            return [];
-        }
+        if (['19door', 'rootFront', 'rootBack'].includes(currentSpecialMode) && n === "") return [];
 
         switch (currentSpecialMode) {
             case '19door': 
@@ -202,26 +209,15 @@ function generateNumbers() {
                     if (s.includes(n)) numbers.push(s);
                 }
                 break;
-            case 'rootFront': 
-                for (let i = 0; i <= 9; i++) numbers.push(n + i);
-                break;
-            case 'rootBack': 
-                for (let i = 0; i <= 9; i++) numbers.push(i + n);
-                break;
-            case 'double': 
-                for (let i = 0; i <= 9; i++) numbers.push(i + "" + i);
-                break;
-            case 'even': 
-                for (let i = 0; i <= 99; i++) if (i % 2 === 0) numbers.push(i.toString().padStart(2, '0'));
-                break;
-            case 'odd': 
-                for (let i = 0; i <= 99; i++) if (i % 2 !== 0) numbers.push(i.toString().padStart(2, '0'));
-                break;
+            case 'rootFront': for (let i = 0; i <= 9; i++) numbers.push(n + i); break;
+            case 'rootBack': for (let i = 0; i <= 9; i++) numbers.push(i + n); break;
+            case 'double': for (let i = 0; i <= 9; i++) numbers.push(i + "" + i); break;
+            case 'even': for (let i = 0; i <= 99; i++) if (i % 2 === 0) numbers.push(i.toString().padStart(2, '0')); break;
+            case 'odd': for (let i = 0; i <= 99; i++) if (i % 2 !== 0) numbers.push(i.toString().padStart(2, '0')); break;
         }
     } else {
-        if (isReverseMode) {
-            numbers = getPermutations(currentInput);
-        } else {
+        if (isReverseMode) numbers = getPermutations(currentInput);
+        else {
             if(currentInput === "") return [];
             numbers = [currentInput];
         }
@@ -253,12 +249,11 @@ function getPermutations(numStr) {
     return Array.from(results);
 }
 
-// --- 4. ส่วนเพิ่มลงตาราง (Add to List) ---
+// --- 4. Add To List (แก้บั๊กตรงนี้: เช็ค element ก่อนใช้) ---
 function addToList() {
     const checkboxes = document.querySelectorAll('.sub-opt-check:checked');
     if (checkboxes.length === 0) return;
 
-    // เช็คความยาวเลข (ยกเว้นโหมด Instant)
     const isInstantMode = ['double', 'even', 'odd'].includes(currentSpecialMode);
 
     if (!isInstantMode) {
@@ -275,16 +270,20 @@ function addToList() {
     if (numbersToPlay.length === 0) return;
 
     const listContainer = document.getElementById('bet-list');
+    if (!listContainer) return;
+
+    // *** ดึงราคาจากช่อง Quick Price (ถ้ามี) ***
+    let defaultPrice = "";
+    const quickPriceEl = document.getElementById('quick-price');
+    if (quickPriceEl && quickPriceEl.value) {
+        defaultPrice = quickPriceEl.value;
+    }
 
     checkboxes.forEach(chk => {
         const typeName = chk.value;
         numbersToPlay.forEach(num => {
             if(!num || num.trim() === "") return;
 
-            // 1. ดึงค่าราคาจากช่องหัวบิล (ถ้ามี)
-            const defaultPrice = document.getElementById('quick-price').value;
-
-            // 2. ใส่ค่า defaultPrice ลงไปใน value="..."
             const itemDiv = document.createElement('div');
             itemDiv.className = "list-group-item d-flex align-items-center p-2 border-bottom animate-fade";
             itemDiv.innerHTML = `
@@ -292,28 +291,25 @@ function addToList() {
                 <div style="width: 30%;"><span class="badge bg-info text-dark">${typeName}</span></div>
                 <div style="width: 30%;">
                     <input type="number" class="form-control form-control-sm price-input" 
-                        placeholder="บาท" value="${defaultPrice}" onchange="calculateTotal()" onkeyup="calculateTotal()">
+                           placeholder="บาท" value="${defaultPrice}" onchange="calculateTotal()" onkeyup="calculateTotal()">
                 </div>
                 <div style="width: 10%; text-align: right;">
                     <button class="btn btn-sm text-danger" onclick="this.parentElement.parentElement.remove(); calculateTotal();"><i class="fas fa-times"></i></button>
                 </div>
             `;
+            listContainer.prepend(itemDiv);
         });
     });
 
     currentInput = "";
-    if (['19door', 'rootFront', 'rootBack'].includes(currentSpecialMode)) {
-        resetSpecialMode();
-    }
-    if (isInstantMode) {
-        resetSpecialMode();
-    }
+    if (['19door', 'rootFront', 'rootBack'].includes(currentSpecialMode)) resetSpecialMode();
+    if (isInstantMode) resetSpecialMode();
     
     updateDisplay();
     calculateTotal();
 }
 
-// --- 5. ส่วนท้ายและบันทึก (Footer & Save) ---
+// --- 5. Footer & Manage Prices ---
 function calculateTotal() {
     let total = 0;
     let count = 0;
@@ -321,36 +317,73 @@ function calculateTotal() {
         total += parseInt(inp.value) || 0;
         count++;
     });
-    document.getElementById('total-amount').innerText = total.toLocaleString();
-    document.getElementById('item-count').innerText = count;
+    
+    const totalEl = document.getElementById('total-amount');
+    const countEl = document.getElementById('item-count');
+    const headerTotal = document.getElementById('header-total');
+
+    if(totalEl) totalEl.innerText = total.toLocaleString();
+    if(countEl) countEl.innerText = count;
+    if(headerTotal) headerTotal.innerText = total.toLocaleString();
 }
 
+// ฟังก์ชันปุ่ม "เท่ากันหมด"
 function setAllPrices() {
-    const price = prompt("ระบุราคา:");
-    if(price) {
-        document.querySelectorAll('.price-input').forEach(inp => {
-            if(inp.value === "") inp.value = price;
+    const qPrice = document.getElementById('quick-price');
+    if(!qPrice || !qPrice.value) {
+        alert("กรุณาใส่ราคาในช่องด้านบนก่อนครับ");
+        if(qPrice) qPrice.focus();
+        return;
+    }
+    const price = qPrice.value;
+    const inputs = document.querySelectorAll('.price-input');
+    if(inputs.length === 0) return;
+
+    if(confirm(`เปลี่ยนราคา "ทุกรายการ" เป็น ${price} บาท?`)) {
+        inputs.forEach(inp => {
+            inp.value = price;
+            inp.classList.remove('border', 'border-danger');
         });
         calculateTotal();
     }
 }
 
+// ฟังก์ชันปุ่ม "เติมช่องว่าง" (สำหรับรายการที่ลืมใส่ราคา)
+function fillEmptyPrices() {
+    const qPrice = document.getElementById('quick-price');
+    if(!qPrice || !qPrice.value) {
+        alert("กรุณาใส่ราคาในช่องด้านบนก่อนครับ");
+        if(qPrice) qPrice.focus();
+        return;
+    }
+    const price = qPrice.value;
+    let count = 0;
+    document.querySelectorAll('.price-input').forEach(inp => {
+        if(inp.value === "") {
+            inp.value = price;
+            inp.classList.remove('border', 'border-danger');
+            count++;
+        }
+    });
+    if(count > 0) calculateTotal();
+    else alert("ไม่มีรายการช่องว่างให้เติม");
+}
+
 function clearList() {
     const listContainer = document.getElementById('bet-list');
-    if (listContainer.children.length === 0) return;
+    if (!listContainer || listContainer.children.length === 0) return;
     if (confirm('คุณต้องการลบรายการทั้งหมดใช่หรือไม่?')) {
         listContainer.innerHTML = '';
         calculateTotal();
     }
 }
 
-// *** ฟังก์ชัน saveBill ฉบับสมบูรณ์ (กรองค่าว่าง + เปลี่ยนหน้า) ***
+// --- 6. Save Bill ---
 function saveBill() {
     const items = [];
     let hasError = false;
     let errorMsg = "";
 
-    // ล้างสีแจ้งเตือน
     document.querySelectorAll('#bet-list .list-group-item').forEach(row => {
         row.style.backgroundColor = "";
         row.querySelector('.price-input').classList.remove('border', 'border-danger');
@@ -364,10 +397,8 @@ function saveBill() {
         const priceInput = row.querySelector('.price-input');
         const priceVal = priceInput.value;
 
-        // กรองค่าว่าง
         if (numberText === "" || numberText === "_") return;
 
-        // ตรวจความยาว
         let isValidFormat = true;
         if (typeText.includes("3 ตัว") && numberText.length !== 3) isValidFormat = false;
         else if ((typeText.includes("2 ตัว") || typeText.includes("19") || typeText.includes("รูด") || typeText.includes("เบิ้ล") || typeText.includes("คู่") || typeText.includes("คี่")) && numberText.length !== 2) isValidFormat = false;
@@ -383,7 +414,7 @@ function saveBill() {
         if (!priceVal || parseInt(priceVal) <= 0) {
             hasError = true;
             priceInput.classList.add('border', 'border-danger');
-            if(errorMsg === "") errorMsg = "กรุณาใส่ราคาให้ครบ";
+            if(errorMsg === "") errorMsg = "กรุณาใส่ราคาให้ครบทุกรายการ";
         } else {
             items.push({ number: numberText, type: typeText, price: parseInt(priceVal) });
         }
@@ -419,71 +450,10 @@ function saveBill() {
         alert(`บันทึกสำเร็จ!\nลูกค้า: ${finalOwnerName}\nยอดเงิน: ${total.toLocaleString()} บาท`);
         document.getElementById('bet-list').innerHTML = '';
         calculateTotal();
-        // *** สั่งเปลี่ยนหน้าตรงนี้ ***
         window.location.href = 'history.html?from=lotto';
     })
     .catch((error) => {
         console.error("Error:", error);
         alert("บันทึกไม่สำเร็จ: " + error.message);
     });
-}
-
-// --- ฟังก์ชันจัดการราคาแบบใหม่ ---
-
-// 1. ปุ่ม "เท่ากันหมด" (เปลี่ยนทุกรายการเป็นราคานี้)
-function setAllPrices() {
-    const price = document.getElementById('quick-price').value;
-    
-    if(!price) {
-        alert("กรุณาใส่ราคาในช่องด้านบนก่อนครับ");
-        document.getElementById('quick-price').focus();
-        return;
-    }
-
-    const inputs = document.querySelectorAll('.price-input');
-    if(inputs.length === 0) return;
-
-    if(confirm(`ยืนยันเปลี่ยนราคา "ทุกรายการ" เป็น ${price} บาท?`)) {
-        inputs.forEach(inp => {
-            inp.value = price;
-            inp.classList.remove('border', 'border-danger'); // ล้างขอบแดงเผื่อมี error เก่า
-        });
-        calculateTotal();
-    }
-}
-
-// 2. ปุ่ม "เติมช่องว่าง" (เปลี่ยนเฉพาะรายการที่ยังไม่ใส่ราคา)
-function fillEmptyPrices() {
-    const price = document.getElementById('quick-price').value;
-    
-    if(!price) {
-        alert("กรุณาใส่ราคาในช่องด้านบนก่อนครับ");
-        document.getElementById('quick-price').focus();
-        return;
-    }
-
-    let count = 0;
-    document.querySelectorAll('.price-input').forEach(inp => {
-        if(inp.value === "") { // เช็คว่าว่างไหม
-            inp.value = price;
-            inp.classList.remove('border', 'border-danger');
-            count++;
-        }
-    });
-
-    if(count > 0) {
-        calculateTotal();
-    } else {
-        alert("ไม่มีรายการช่องว่างให้เติม");
-    }
-}
-
-// อัปเดตยอดรวมที่หัวบิลด้วย (เรียกใช้ใน calculateTotal)
-const oldCalculateTotal = calculateTotal; // เก็บฟังก์ชันเดิมไว้
-calculateTotal = function() {
-    oldCalculateTotal(); // เรียกฟังก์ชันเดิมเพื่อคำนวณ
-    // เพิ่มการอัปเดตเลขที่หัวบิล
-    const total = document.getElementById('total-amount').innerText;
-    const headerTotal = document.getElementById('header-total');
-    if(headerTotal) headerTotal.innerText = total;
 }
