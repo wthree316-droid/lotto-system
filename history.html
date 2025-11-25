@@ -13,37 +13,21 @@
 
     <style>
         body { font-family: 'Sarabun', sans-serif; background: #f8f9fa; padding-bottom: 100px; }
-        
         .grand-total-bar {
             position: fixed; bottom: 0; left: 0; width: 100%;
             background: #212529; color: white;
-            padding: 10px 15px; 
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.2); 
-            z-index: 1000;
-            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 15px; box-shadow: 0 -2px 10px rgba(0,0,0,0.2); 
+            z-index: 1000; display: flex; justify-content: space-between; align-items: center;
         }
         .total-box { text-align: center; cursor: pointer; }
         .total-label { font-size: 0.8rem; color: #adb5bd; display: block; }
         .total-value { font-size: 1.2rem; font-weight: bold; }
         .divider { height: 40px; width: 1px; background-color: #495057; margin: 0 10px; }
-
-        /* Style สำหรับแถบคั่นวันที่ */
         .date-separator {
-            background-color: #e9ecef;
-            color: #495057;
-            padding: 8px 15px;
-            border-radius: 5px;
-            margin-top: 20px;
-            margin-bottom: 10px;
-            font-weight: bold;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            background-color: #e9ecef; color: #495057; padding: 8px 15px; border-radius: 5px;
+            margin-top: 20px; margin-bottom: 10px; font-weight: bold;
+            display: flex; justify-content: space-between; align-items: center;
             border-left: 5px solid #0d6efd;
-        }
-        .delete-day-btn {
-            font-size: 0.8rem;
-            padding: 2px 8px;
         }
     </style>
 </head>
@@ -65,9 +49,7 @@
             </button>
         </div>
 
-        <div id="history-container">
-            </div>
-        
+        <div id="history-container"></div>
         <div id="error-box" class="alert alert-danger d-none mt-3"></div>
     </div>
 
@@ -100,7 +82,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
     <script>
-        let dailySummaryData = {}; // เก็บยอดเพื่อโชว์ใน Modal
+        let dailySummaryData = {}; 
 
         document.addEventListener('DOMContentLoaded', () => {
             handleBackButton();
@@ -142,34 +124,29 @@
 
                 let bills = [];
                 querySnapshot.forEach(doc => bills.push({ id: doc.id, ...doc.data() }));
-                
-                // เรียงจาก ใหม่ -> เก่า
                 bills.sort((a, b) => b.timestamp - a.timestamp);
 
                 container.innerHTML = ''; 
-                
                 let grandTotal = 0;
                 let todayTotal = 0;
                 dailySummaryData = {};
-                
-                let lastDateStr = ""; // ตัวแปรจำวันที่ล่าสุดเพื่อทำเส้นคั่น
-
+                let lastDateStr = ""; 
                 const today = new Date();
                 const todayKey = formatDateKey(today);
 
-                bills.forEach((bill) => {
+                let htmlBuffer = "";
+
+                bills.forEach((bill, index) => {
                     const billAmount = bill.total || 0;
                     grandTotal += billAmount;
 
-                    // จัดการเรื่องวันที่
                     let billDateKey = "ไม่ระบุ";
                     let displayDate = "ไม่ระบุ";
                     
                     if (bill.timestamp) {
                         const d = bill.timestamp.toDate();
-                        billDateKey = formatDateKey(d); // D/M/Y
+                        billDateKey = formatDateKey(d); 
                         
-                        // เก็บยอดรายวัน
                         if (!dailySummaryData[billDateKey]) dailySummaryData[billDateKey] = 0;
                         dailySummaryData[billDateKey] += billAmount;
 
@@ -179,159 +156,104 @@
                         if(billDateKey === todayKey) displayDate = "วันนี้ (" + billDateKey + ")";
                     }
 
-                    // --- สร้างเส้นแบ่งวันที่ (Date Separator) ---
                     if (billDateKey !== lastDateStr) {
-                        const sepDiv = document.createElement('div');
-                        sepDiv.className = "date-separator";
-                        sepDiv.innerHTML = `
-                            <span><i class="far fa-calendar-alt me-2"></i> ${displayDate}</span>
-                            <button class="btn btn-outline-danger btn-sm delete-day-btn" onclick="deleteByDate('${billDateKey}')">
-                                <i class="fas fa-trash-alt"></i> ลบทั้งวัน
-                            </button>
+                        htmlBuffer += `
+                            <div class="date-separator">
+                                <span><i class="far fa-calendar-alt me-2"></i> ${displayDate}</span>
+                                <button class="btn btn-outline-danger btn-sm delete-day-btn" onclick="deleteByDate('${billDateKey}')">
+                                    <i class="fas fa-trash-alt"></i> ลบทั้งวัน
+                                </button>
+                            </div>
                         `;
-                        container.appendChild(sepDiv);
                         lastDateStr = billDateKey;
                     }
 
-                    // --- สร้างการ์ดบิล ---
-                    const cardHtml = createBillCard(bill);
-                    // ใช้ div หุ้มเพื่อใส่ event onclick สำหรับลบ (ต้องระวัง event bubbling)
-                    const wrapper = document.createElement('div');
-                    wrapper.innerHTML = cardHtml;
-                    container.appendChild(wrapper.firstElementChild);
+                    // *** สร้าง ID แบบสุ่ม เพื่อแก้ปัญหา ID แปลกๆ ***
+                    const safeId = 'acc_' + index + '_' + Math.floor(Math.random() * 1000);
+                    
+                    let itemRows = '';
+                    if(bill.items) {
+                        bill.items.forEach(item => {
+                            itemRows += `<tr><td class="text-start ps-4">${item.number}</td><td><span class="badge bg-light text-dark border">${item.type}</span></td><td class="text-end pe-4 fw-bold text-primary">${item.price}</td></tr>`;
+                        });
+                    }
+
+                    const deleteBtn = `<button class="btn btn-sm btn-danger ms-2 z-3" style="position:relative;" onclick="event.stopPropagation(); deleteSingleBill('${bill.id}')"><i class="fas fa-trash"></i></button>`;
+
+                    htmlBuffer += `
+                        <div class="accordion-item mb-2 border shadow-sm">
+                            <h2 class="accordion-header" id="heading_${safeId}">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse_${safeId}" aria-expanded="false" aria-controls="collapse_${safeId}">
+                                    <div class="w-100 d-flex flex-column flex-md-row justify-content-between pe-3">
+                                        <div>
+                                            <div class="fw-bold text-dark"><i class="fas fa-user me-1"></i> ${bill.owner || '-'}</div>
+                                            <div class="text-muted small">
+                                                <span class="badge bg-info text-dark me-1">${bill.lottoName || 'หวย'}</span>
+                                                ${bill.dateString}
+                                            </div>
+                                        </div>
+                                        <div class="text-md-end mt-1 mt-md-0 d-flex align-items-center justify-content-end">
+                                            <span class="fw-bold text-success fs-5 me-2">${billAmount.toLocaleString()} ฿</span>
+                                            ${deleteBtn}
+                                        </div>
+                                    </div>
+                                </button>
+                            </h2>
+                            <div id="collapse_${safeId}" class="accordion-collapse collapse" aria-labelledby="heading_${safeId}">
+                                <div class="accordion-body p-0">
+                                    <table class="table table-striped table-hover mb-0 text-center align-middle">
+                                        <thead class="table-light small"><tr><th class="text-start ps-4">เลข</th><th>ประเภท</th><th class="text-end pe-4">ราคา</th></tr></thead>
+                                        <tbody>${itemRows}</tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    `;
                 });
 
+                // ยัด HTML ทีเดียว (ปลอดภัยกว่า createElement ทีละตัวในกรณีนี้)
+                container.innerHTML = htmlBuffer;
                 updateFooter(grandTotal, todayTotal);
             })
             .catch(err => showError(err.message));
         }
 
-
-        function createBillCard(bill) {
-            // แก้ไข: เติม 'b_' นำหน้า ID เพื่อให้แน่ใจว่า ID ถูกต้องตามหลัก HTML เสมอ
-            // (บางที Firebase ID ขึ้นต้นด้วยตัวเลข ทำให้กด Accordion ไม่ติด)
-            const safeId = 'b_' + bill.id; 
-            
-            let itemRows = '';
-            if(bill.items) {
-                bill.items.forEach(item => {
-                    itemRows += `
-                        <tr>
-                            <td class="text-start ps-4">${item.number}</td>
-                            <td><span class="badge bg-light text-dark border">${item.type}</span></td>
-                            <td class="text-end pe-4 fw-bold text-primary">${item.price}</td>
-                        </tr>
-                    `;
-                });
-            }
-            
-            const deleteBtn = `<button class="btn btn-sm btn-danger ms-2 z-3" style="position:relative;" onclick="event.stopPropagation(); deleteSingleBill('${bill.id}')"><i class="fas fa-trash"></i></button>`;
-
-            return `
-                <div class="accordion-item mb-2 border shadow-sm">
-                    <h2 class="accordion-header" id="heading_${safeId}">
-                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse_${safeId}" aria-expanded="false" aria-controls="collapse_${safeId}">
-                            <div class="w-100 d-flex flex-column flex-md-row justify-content-between pe-3">
-                                <div>
-                                    <div class="fw-bold text-dark"><i class="fas fa-user me-1"></i> ${bill.owner || '-'}</div>
-                                    <div class="text-muted small">
-                                        <span class="badge bg-info text-dark me-1">${bill.lottoName || 'หวย'}</span>
-                                        <i class="far fa-clock ms-1"></i> ${bill.dateString}
-                                    </div>
-                                </div>
-                                <div class="text-md-end mt-1 mt-md-0 d-flex align-items-center justify-content-end">
-                                    <span class="fw-bold text-success fs-5 me-2">${(bill.total || 0).toLocaleString()} ฿</span>
-                                    ${deleteBtn}
-                                </div>
-                            </div>
-                        </button>
-                    </h2>
-                    <div id="collapse_${safeId}" class="accordion-collapse collapse" aria-labelledby="heading_${safeId}">
-                        <div class="accordion-body p-0">
-                            <table class="table table-striped table-hover mb-0 text-center align-middle">
-                                <thead class="table-light small">
-                                    <tr><th class="text-start ps-4">เลข</th><th>ประเภท</th><th class="text-end pe-4">ราคา</th></tr>
-                                </thead>
-                                <tbody>${itemRows}</tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }
-
-        // --- ฟังก์ชันลบ ---
-
-        // 1. ลบบิลเดียว
         function deleteSingleBill(docId) {
             if(confirm("ต้องการลบบิลนี้ใช่หรือไม่?")) {
-                db.collection("bills").doc(docId).delete()
-                .then(() => {
-                    // ไม่ต้อง Alert รำคาญ โหลดใหม่เลย
-                    loadHistory(); 
-                })
-                .catch(err => alert("ลบไม่สำเร็จ: " + err.message));
+                db.collection("bills").doc(docId).delete().then(() => loadHistory()).catch(err => alert("ลบไม่สำเร็จ"));
             }
         }
 
-        // 2. ลบทั้งวัน
         function deleteByDate(targetDateKey) {
             const currentUser = localStorage.getItem('agentName');
-            if(confirm(`ยืนยันลบบิลทั้งหมดของวันที่ "${targetDateKey}" ? (กู้คืนไม่ได้)`)) {
-                
-                // ต้องคิวรี่มาเช็ควันที่ทีละตัว (เพราะเราเก็บ timestamp ไม่ได้เก็บ field วันที่แยกชัดเจนในการ query)
-                db.collection("bills").where("agent", "==", currentUser).get()
-                .then((querySnapshot) => {
+            if(confirm(`ยืนยันลบบิลทั้งหมดของวันที่ "${targetDateKey}" ?`)) {
+                db.collection("bills").where("agent", "==", currentUser).get().then((qs) => {
                     const batch = db.batch();
                     let count = 0;
-
-                    querySnapshot.forEach((doc) => {
+                    qs.forEach((doc) => {
                         const bill = doc.data();
-                        if (bill.timestamp) {
-                            const d = bill.timestamp.toDate();
-                            const key = formatDateKey(d);
-                            
-                            // ถ้าวันที่ตรงกับเป้าหมาย ให้ลบ
-                            if (key === targetDateKey) {
-                                batch.delete(doc.ref);
-                                count++;
-                            }
+                        if (bill.timestamp && formatDateKey(bill.timestamp.toDate()) === targetDateKey) {
+                            batch.delete(doc.ref);
+                            count++;
                         }
                     });
-
-                    if (count === 0) {
-                        alert("ไม่พบข้อมูลของวันที่เลือก");
-                        return;
-                    }
-
+                    if (count === 0) { alert("ไม่พบข้อมูล"); return; }
                     return batch.commit();
-                })
-                .then(() => {
-                    alert("ลบเรียบร้อย");
-                    loadHistory(); // โหลดใหม่ ค่าสรุปจะถูกคำนวณใหม่เอง
-                })
-                .catch(err => alert("Error: " + err.message));
+                }).then(() => { alert("ลบเรียบร้อย"); loadHistory(); }).catch(err => alert("Error: " + err.message));
             }
         }
 
-        // 3. ลบทั้งหมด (ล้างเกลี้ยง)
         function clearHistory() {
             const currentUser = localStorage.getItem('agentName');
-            if (confirm(`ยืนยันล้างประวัติ "ทั้งหมด" ของ ${currentUser} ?`)) {
-                db.collection("bills").where("agent", "==", currentUser).get()
-                .then((qs) => {
+            if (confirm(`ยืนยันล้างประวัติทั้งหมด?`)) {
+                db.collection("bills").where("agent", "==", currentUser).get().then((qs) => {
                     const batch = db.batch();
                     qs.forEach(doc => batch.delete(doc.ref));
                     return batch.commit();
-                })
-                .then(() => {
-                    dailySummaryData = {}; // ล้างตัวแปรเก็บยอด
-                    loadHistory();
-                });
+                }).then(() => { dailySummaryData = {}; loadHistory(); });
             }
         }
 
-        // --- Helper Functions ---
         function formatDateKey(dateObj) {
             return dateObj.getDate() + "/" + (dateObj.getMonth() + 1) + "/" + (dateObj.getFullYear() + 543);
         }
@@ -345,11 +267,8 @@
             const list = document.getElementById('daily-list-container');
             list.innerHTML = '';
             const dates = Object.keys(dailySummaryData);
-            
-            if (dates.length === 0) {
-                list.innerHTML = '<li class="list-group-item text-center">ไม่มีข้อมูล</li>';
-            } else {
-                // เรียงวันที่ (ถอยหลัง)
+            if (dates.length === 0) list.innerHTML = '<li class="list-group-item text-center">ไม่มีข้อมูล</li>';
+            else {
                 dates.sort((a, b) => {
                     const [d1, m1, y1] = a.split('/').map(Number);
                     const [d2, m2, y2] = b.split('/').map(Number);
@@ -357,20 +276,9 @@
                     if (m1 !== m2) return m2 - m1;
                     return d2 - d1;
                 });
-
-                const todayKey = formatDateKey(new Date());
-
                 dates.forEach(d => {
-                    const isToday = (d === todayKey);
-                    const label = isToday ? `${d} (วันนี้)` : d;
-                    const cls = isToday ? "bg-info bg-opacity-10 fw-bold" : "";
-                    
-                    list.innerHTML += `
-                        <li class="list-group-item d-flex justify-content-between ${cls}">
-                            <span>${label}</span>
-                            <span>${dailySummaryData[d].toLocaleString()} ฿</span>
-                        </li>
-                    `;
+                    const cls = (d === formatDateKey(new Date())) ? "bg-info bg-opacity-10 fw-bold" : "";
+                    list.innerHTML += `<li class="list-group-item d-flex justify-content-between ${cls}"><span>${d}</span><span>${dailySummaryData[d].toLocaleString()} ฿</span></li>`;
                 });
             }
             new bootstrap.Modal(document.getElementById('dailyModal')).show();
