@@ -281,6 +281,10 @@ function addToList() {
         numbersToPlay.forEach(num => {
             if(!num || num.trim() === "") return;
 
+            // 1. ดึงค่าราคาจากช่องหัวบิล (ถ้ามี)
+            const defaultPrice = document.getElementById('quick-price').value;
+
+            // 2. ใส่ค่า defaultPrice ลงไปใน value="..."
             const itemDiv = document.createElement('div');
             itemDiv.className = "list-group-item d-flex align-items-center p-2 border-bottom animate-fade";
             itemDiv.innerHTML = `
@@ -288,13 +292,12 @@ function addToList() {
                 <div style="width: 30%;"><span class="badge bg-info text-dark">${typeName}</span></div>
                 <div style="width: 30%;">
                     <input type="number" class="form-control form-control-sm price-input" 
-                           placeholder="บาท" onchange="calculateTotal()" onkeyup="calculateTotal()">
+                        placeholder="บาท" value="${defaultPrice}" onchange="calculateTotal()" onkeyup="calculateTotal()">
                 </div>
                 <div style="width: 10%; text-align: right;">
                     <button class="btn btn-sm text-danger" onclick="this.parentElement.parentElement.remove(); calculateTotal();"><i class="fas fa-times"></i></button>
                 </div>
             `;
-            listContainer.prepend(itemDiv);
         });
     });
 
@@ -423,4 +426,64 @@ function saveBill() {
         console.error("Error:", error);
         alert("บันทึกไม่สำเร็จ: " + error.message);
     });
+}
+
+// --- ฟังก์ชันจัดการราคาแบบใหม่ ---
+
+// 1. ปุ่ม "เท่ากันหมด" (เปลี่ยนทุกรายการเป็นราคานี้)
+function setAllPrices() {
+    const price = document.getElementById('quick-price').value;
+    
+    if(!price) {
+        alert("กรุณาใส่ราคาในช่องด้านบนก่อนครับ");
+        document.getElementById('quick-price').focus();
+        return;
+    }
+
+    const inputs = document.querySelectorAll('.price-input');
+    if(inputs.length === 0) return;
+
+    if(confirm(`ยืนยันเปลี่ยนราคา "ทุกรายการ" เป็น ${price} บาท?`)) {
+        inputs.forEach(inp => {
+            inp.value = price;
+            inp.classList.remove('border', 'border-danger'); // ล้างขอบแดงเผื่อมี error เก่า
+        });
+        calculateTotal();
+    }
+}
+
+// 2. ปุ่ม "เติมช่องว่าง" (เปลี่ยนเฉพาะรายการที่ยังไม่ใส่ราคา)
+function fillEmptyPrices() {
+    const price = document.getElementById('quick-price').value;
+    
+    if(!price) {
+        alert("กรุณาใส่ราคาในช่องด้านบนก่อนครับ");
+        document.getElementById('quick-price').focus();
+        return;
+    }
+
+    let count = 0;
+    document.querySelectorAll('.price-input').forEach(inp => {
+        if(inp.value === "") { // เช็คว่าว่างไหม
+            inp.value = price;
+            inp.classList.remove('border', 'border-danger');
+            count++;
+        }
+    });
+
+    if(count > 0) {
+        calculateTotal();
+    } else {
+        alert("ไม่มีรายการช่องว่างให้เติม");
+    }
+}
+
+// อัปเดตยอดรวมที่หัวบิลด้วย (เรียกใช้ใน calculateTotal)
+const oldCalculateTotal = calculateTotal; // เก็บฟังก์ชันเดิมไว้
+calculateTotal = function() {
+    oldCalculateTotal(); // เรียกฟังก์ชันเดิมเพื่อคำนวณ
+    // เพิ่มการอัปเดตเลขที่หัวบิล
+    const total = document.getElementById('total-amount').innerText;
+    const headerTotal = document.getElementById('header-total');
+    if(headerTotal) headerTotal.innerText = total;
 }
