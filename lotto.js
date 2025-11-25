@@ -427,6 +427,7 @@ function saveBill() {
     const lottoName = document.getElementById('lotto-title').innerText;
     const total = items.reduce((sum, item) => sum + item.price, 0);
 
+    // 3. ส่งขึ้น Firebase
     db.collection("bills").add({
         agent: localStorage.getItem('agentName'),      
         owner: finalOwnerName,   
@@ -437,12 +438,19 @@ function saveBill() {
         dateString: new Date().toLocaleString('th-TH') 
     })
     .then(() => {
-        alert(`บันทึกสำเร็จ!\nลูกค้า: ${finalOwnerName}`);
+
+        alert(`บันทึกสำเร็จ!\nลูกค้า: ${finalOwnerName}\nยอดเงิน: ${total.toLocaleString()} บาท`);
+        
+        // ล้างหน้าจอ
         document.getElementById('bet-list').innerHTML = '';
         calculateTotal();
+
+        // ดีดไปหน้าดูประวัติทันที (ส่งค่า ?from=lotto เพื่อให้ปุ่มย้อนกลับทำงานถูก)
+        window.location.href = 'history.html?from=lotto';
     })
     .catch((error) => {
         console.error("Error:", error);
-        alert("บันทึกไม่สำเร็จ");
+        alert("บันทึกไม่สำเร็จ: " + error.message);
     });
 }
+
