@@ -3,227 +3,295 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>เลือกประเภทหวย</title>
+    <title>เลือกประเภทหวย - TEAMZENT LOTTO</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="lotto.css">
+    
     <style>
-        /* เพิ่ม Style สำหรับการ์ดที่ปิดรับแล้ว */
+        body { 
+            background-color: #f0f2f5; 
+            padding-top: 70px; /* เว้นที่ให้ Navbar ด้านบน */
+        }
+        
+        /* สไตล์การ์ดหวย */
+        .lotto-card {
+            transition: transform 0.2s;
+            border: none;
+            cursor: pointer;
+            border-radius: 12px;
+            background: white;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .lotto-card:active {
+            transform: scale(0.98); /* เอฟเฟกต์กดลง */
+        }
+
+        /* เมื่อปิดรับ */
         .lotto-card.closed-lotto {
             filter: grayscale(100%);
             opacity: 0.6;
-            pointer-events: none; /* ห้ามกด */
-            border: 1px solid #ccc;
+            pointer-events: none;
         }
-        .lotto-card.closed-lotto .badge {
-            background-color: #6c757d !important; /* เปลี่ยน Badge เป็นสีเทา */
+
+        .timer-display {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        /* ปรับ Navbar ให้เหมือนแอป */
+        .navbar {
+            background-color: #212529;
+            min-height: 60px;
+        }
+        .navbar-brand {
+            font-size: 1.2rem;
+            letter-spacing: 1px;
+        }
+        
+        /* ปรับแต่งเมนูลิ้นชัก (Offcanvas) */
+        .offcanvas-dark {
+            background-color: #212529;
+            color: white;
+        }
+        .offcanvas-dark .btn-close {
+            filter: invert(1);
+        }
+        .mobile-menu-link {
+            padding: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            color: #e0e0e0;
+            text-decoration: none;
+            display: block;
+            font-size: 1.1rem;
+        }
+        .mobile-menu-link:hover {
+            background: rgba(255,255,255,0.05);
+            color: white;
+        }
+        .mobile-menu-link i {
+            width: 30px;
+            text-align: center;
         }
     </style>
-
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    <script src="firebase-config.js"></script>
-
 </head>
-<body class="bg-light">
+<body>
 
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
-        <div class="container">
-            <a class="navbar-brand" href="#">TEAMZENT LOTTO</a>
+    <nav class="navbar navbar-dark fixed-top shadow-sm">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="#">
+                TEAMZENT LOTTO
+            </a>
             
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+            <button class="navbar-toggler border-0" type="button" data-bs-toggle="offcanvas" data-bs-target="#sideMenu">
                 <span class="navbar-toggler-icon"></span>
             </button>
 
-            <div class="collapse navbar-collapse justify-content-end" id="navbarContent">
-                <div class="d-flex align-items-center mt-3 mt-lg-0">
+            <div class="offcanvas offcanvas-end offcanvas-dark" tabindex="-1" id="sideMenu">
+                <div class="offcanvas-header border-bottom border-secondary">
+                    <h5 class="offcanvas-title">เมนูหลัก</h5>
+                    <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas"></button>
+                </div>
+                <div class="offcanvas-body p-0">
                     
-                    <a href="history.html?from=menu" class="btn btn-outline-light btn-sm me-2">
-                        <i class="fas fa-list"></i> ดูประวัติ
-                    </a>
-
-                    <button onclick="logout()" class="btn btn-danger btn-sm me-3">
-                        <i class="fas fa-sign-out-alt"></i> ออกจากระบบ
-                    </button>
-
-                    <div class="text-white text-end me-3 d-none d-sm-block">
-                        <small class="d-block text-secondary" style="font-size: 0.8rem;">ผู้ใช้งาน</small>
-                        <span class="fw-bold text-success" id="user-display">Checking...</span>
+                    <div class="p-4 bg-dark text-center border-bottom border-secondary">
+                        <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center text-white mx-auto mb-2" style="width: 60px; height: 60px; font-size: 1.5rem;">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <h5 class="fw-bold mb-0 text-white" id="user-display-mobile">Guest</h5>
+                        <small class="text-success">● ออนไลน์</small>
                     </div>
-                    <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center text-white" style="width: 40px; height: 40px;">
-                        <i class="fas fa-user"></i>
+
+                    <div class="d-flex flex-column">
+                        <a href="history.html?from=menu" class="mobile-menu-link">
+                            <i class="fas fa-history text-warning"></i> ดูประวัติการแทง
+                        </a>
+                        
+                        <a href="#" class="mobile-menu-link" onclick="location.reload()">
+                            <i class="fas fa-sync-alt text-info"></i> รีเฟรชหน้าจอ
+                        </a>
+
+                        <a href="#" class="mobile-menu-link text-danger mt-3" onclick="logout()">
+                            <i class="fas fa-sign-out-alt"></i> ออกจากระบบ
+                        </a>
+                    </div>
+
+                    <div class="p-4 mt-auto text-center text-secondary small">
+                        Lotto System Pro v1.0<br>
+                        &copy; 2025 TeamZent
                     </div>
                 </div>
             </div>
         </div>
     </nav>
 
-    <div class="container py-4">
+    <div class="container pb-5">
         
-        <div class="alert alert-primary d-flex align-items-center shadow-sm" role="alert">
-            <i class="fas fa-clock me-3 fs-4"></i>
-            <div>
-                <strong>เวลาปัจจุบัน:</strong> <span id="clock-now">...</span>
+        <div class="card border-0 shadow-sm mb-4" style="background: #e3f2fd;">
+            <div class="card-body py-3 d-flex align-items-center">
+                <i class="fas fa-clock text-primary fs-4 me-3"></i>
+                <div>
+                    <small class="text-muted d-block">เวลาปัจจุบัน</small>
+                    <span class="fw-bold fs-5 text-dark" id="clock-now">Loading...</span>
+                </div>
             </div>
         </div>
 
-        <h4 class="mb-3 text-secondary"><i class="fas fa-th-large me-2"></i>เลือกประเภทหวย</h4>
+        <h5 class="mb-3 text-secondary fw-bold"><i class="fas fa-th-large me-2"></i>เลือกประเภทหวย</h5>
 
         <div class="row g-3">
             
             <div class="col-6 col-md-4 col-lg-3">
-                <div class="card h-100 shadow-sm lotto-card" onclick="selectLotto('รัฐบาลไทย', '15:30')">
-                    <div class="card-body text-center">
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Flag_of_Thailand.svg/120px-Flag_of_Thailand.svg.png" 
-                             alt="Thai" class="rounded mb-3 shadow-sm" style="width: 60px; height: 40px; object-fit: cover;">
-                        <h5 class="card-title fw-bold">รัฐบาลไทย</h5>
-                        <p class="card-text text-muted small">งวด 1 ธ.ค. 68</p>
-                        <div class="badge bg-success mb-2 px-3 py-2 rounded-pill status-badge">เปิดรับแทง</div>
-                        <div class="text-danger fw-bold small timer-display" data-close="15:30">คำนวณเวลา...</div>
-                    </div>
+                <div class="card h-100 lotto-card p-2 text-center" onclick="selectLotto('รัฐบาลไทย', '15:30')">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Flag_of_Thailand.svg/120px-Flag_of_Thailand.svg.png" 
+                         class="rounded shadow-sm mb-2 mx-auto d-block" style="width: 50px; height: 35px; object-fit: cover;">
+                    <h6 class="fw-bold mb-1">รัฐบาลไทย</h6>
+                    <small class="text-muted d-block mb-2" style="font-size: 0.75rem;">งวด 1 ธ.ค. 68</small>
+                    <div class="badge bg-success rounded-pill mb-1 status-badge">เปิดรับแทง</div>
+                    <div class="timer-display text-success small" data-close="15:30">...</div>
                 </div>
             </div>
 
             <div class="col-6 col-md-4 col-lg-3">
-                <div class="card h-100 shadow-sm lotto-card" onclick="selectLotto('หวยออมสิน', '12:30')">
-                    <div class="card-body text-center">
-                        <div class="bg-warning text-white rounded mb-3 shadow-sm d-flex align-items-center justify-content-center mx-auto" style="width: 60px; height: 40px;">
-                            <i class="fas fa-piggy-bank fs-4"></i>
-                        </div>
-                        <h5 class="card-title fw-bold">หวยออมสิน</h5>
-                        <p class="card-text text-muted small">งวด 1 ธ.ค. 68</p>
-                        <div class="badge bg-success mb-2 px-3 py-2 rounded-pill status-badge">เปิดรับแทง</div>
-                        <div class="text-danger fw-bold small timer-display" data-close="12:30">คำนวณเวลา...</div>
+                <div class="card h-100 lotto-card p-2 text-center" onclick="selectLotto('หวยออมสิน', '12:30')">
+                    <div class="bg-warning text-white rounded mb-2 mx-auto d-flex align-items-center justify-content-center shadow-sm" style="width: 50px; height: 35px;">
+                        <i class="fas fa-piggy-bank"></i>
                     </div>
+                    <h6 class="fw-bold mb-1">หวยออมสิน</h6>
+                    <small class="text-muted d-block mb-2" style="font-size: 0.75rem;">งวด 1 ธ.ค. 68</small>
+                    <div class="badge bg-success rounded-pill mb-1 status-badge">เปิดรับแทง</div>
+                    <div class="timer-display text-success small" data-close="12:30">...</div>
                 </div>
             </div>
 
             <div class="col-6 col-md-4 col-lg-3">
-                <div class="card h-100 shadow-sm lotto-card" onclick="selectLotto('หวย ธ.ก.ส.', '09:30')">
-                    <div class="card-body text-center">
-                        <div class="bg-success text-white rounded mb-3 shadow-sm d-flex align-items-center justify-content-center mx-auto" style="width: 60px; height: 40px;">
-                            <i class="fas fa-tree fs-4"></i>
-                        </div>
-                        <h5 class="card-title fw-bold">หวย ธ.ก.ส.</h5>
-                        <p class="card-text text-muted small">งวด 16 ธ.ค. 68</p>
-                        <div class="badge bg-success mb-2 px-3 py-2 rounded-pill status-badge">เปิดรับแทง</div>
-                        <div class="text-danger fw-bold small timer-display" data-close="09:30">คำนวณเวลา...</div>
+                <div class="card h-100 lotto-card p-2 text-center" onclick="selectLotto('หวย ธ.ก.ส.', '09:30')">
+                    <div class="bg-success text-white rounded mb-2 mx-auto d-flex align-items-center justify-content-center shadow-sm" style="width: 50px; height: 35px;">
+                        <i class="fas fa-tree"></i>
                     </div>
+                    <h6 class="fw-bold mb-1">หวย ธ.ก.ส.</h6>
+                    <small class="text-muted d-block mb-2" style="font-size: 0.75rem;">งวด 16 ธ.ค. 68</small>
+                    <div class="badge bg-success rounded-pill mb-1 status-badge">เปิดรับแทง</div>
+                    <div class="timer-display text-success small" data-close="09:30">...</div>
                 </div>
             </div>
 
             <div class="col-6 col-md-4 col-lg-3">
-                <div class="card h-100 shadow-sm lotto-card" onclick="selectLotto('ลาวพัฒนา', '20:30')">
-                    <div class="card-body text-center">
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Flag_of_Laos.svg/120px-Flag_of_Laos.svg.png" 
-                             alt="Lao" class="rounded mb-3 shadow-sm" style="width: 60px; height: 40px; object-fit: cover;">
-                        <h5 class="card-title fw-bold">ลาวพัฒนา</h5>
-                        <div class="badge bg-success mb-2 px-3 py-2 rounded-pill status-badge">เปิดรับแทง</div>
-                        <div class="text-danger fw-bold small timer-display" data-close="20:30">คำนวณเวลา...</div>
-                    </div>
+                <div class="card h-100 lotto-card p-2 text-center" onclick="selectLotto('ลาวพัฒนา', '20:30')">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/56/Flag_of_Laos.svg/120px-Flag_of_Laos.svg.png" 
+                         class="rounded shadow-sm mb-2 mx-auto d-block" style="width: 50px; height: 35px; object-fit: cover;">
+                    <h6 class="fw-bold mb-1">ลาวพัฒนา</h6>
+                    <small class="text-muted d-block mb-2" style="font-size: 0.75rem;">ทุก จันทร์ พุธ ศุกร์</small>
+                    <div class="badge bg-success rounded-pill mb-1 status-badge">เปิดรับแทง</div>
+                    <div class="timer-display text-success small" data-close="20:30">...</div>
                 </div>
             </div>
 
             <div class="col-6 col-md-4 col-lg-3">
-                <div class="card h-100 shadow-sm lotto-card" onclick="selectLotto('ฮานอยปกติ', '18:30')">
-                    <div class="card-body text-center">
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/Flag_of_Vietnam.svg/120px-Flag_of_Vietnam.svg.png" 
-                             alt="Hanoi" class="rounded mb-3 shadow-sm" style="width: 60px; height: 40px; object-fit: cover;">
-                        <h5 class="card-title fw-bold">ฮานอยปกติ</h5>
-                        <div class="badge bg-success mb-2 px-3 py-2 rounded-pill status-badge">เปิดรับแทง</div>
-                        <div class="text-danger fw-bold small timer-display" data-close="18:30">คำนวณเวลา...</div>
-                    </div>
+                <div class="card h-100 lotto-card p-2 text-center" onclick="selectLotto('ฮานอยปกติ', '18:30')">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/Flag_of_Vietnam.svg/120px-Flag_of_Vietnam.svg.png" 
+                         class="rounded shadow-sm mb-2 mx-auto d-block" style="width: 50px; height: 35px; object-fit: cover;">
+                    <h6 class="fw-bold mb-1">ฮานอยปกติ</h6>
+                    <small class="text-muted d-block mb-2" style="font-size: 0.75rem;">ออกทุกวัน</small>
+                    <div class="badge bg-success rounded-pill mb-1 status-badge">เปิดรับแทง</div>
+                    <div class="timer-display text-success small" data-close="18:30">...</div>
                 </div>
             </div>
 
             <div class="col-6 col-md-4 col-lg-3">
-                <div class="card h-100 shadow-sm lotto-card" onclick="selectLotto('นิเคอิ (เช้า)', '09:20')">
-                    <div class="card-body text-center">
-                        <img src="https://upload.wikimedia.org/wikipedia/en/thumb/9/9e/Flag_of_Japan.svg/120px-Flag_of_Japan.svg.png" 
-                             alt="Japan" class="rounded mb-3 shadow-sm" style="width: 60px; height: 40px; object-fit: cover; border: 1px solid #eee;">
-                        <h5 class="card-title fw-bold">นิเคอิ (เช้า)</h5>
-                        <div class="badge bg-success mb-2 px-3 py-2 rounded-pill status-badge">เปิดรับแทง</div>
-                        <div class="text-danger fw-bold small timer-display" data-close="09:20">คำนวณเวลา...</div>
-                    </div>
+                <div class="card h-100 lotto-card p-2 text-center" onclick="selectLotto('นิเคอิ (เช้า)', '09:20')">
+                    <img src="https://upload.wikimedia.org/wikipedia/en/thumb/9/9e/Flag_of_Japan.svg/120px-Flag_of_Japan.svg.png" 
+                         class="rounded shadow-sm mb-2 mx-auto d-block" style="width: 50px; height: 35px; object-fit: cover; border: 1px solid #eee;">
+                    <h6 class="fw-bold mb-1">นิเคอิ (เช้า)</h6>
+                    <small class="text-muted d-block mb-2" style="font-size: 0.75rem;">หุ้นญี่ปุ่น</small>
+                    <div class="badge bg-success rounded-pill mb-1 status-badge">เปิดรับแทง</div>
+                    <div class="timer-display text-success small" data-close="09:20">...</div>
                 </div>
             </div>
 
             <div class="col-6 col-md-4 col-lg-3">
-                <div class="card h-100 shadow-sm lotto-card" onclick="selectLotto('ฮั่งเส็ง (บ่าย)', '14:50')">
-                    <div class="card-body text-center">
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Flag_of_Hong_Kong.svg/120px-Flag_of_Hong_Kong.svg.png" 
-                             alt="HK" class="rounded mb-3 shadow-sm" style="width: 60px; height: 40px; object-fit: cover;">
-                        <h5 class="card-title fw-bold">ฮั่งเส็ง (บ่าย)</h5>
-                        <div class="badge bg-success mb-2 px-3 py-2 rounded-pill status-badge">เปิดรับแทง</div>
-                        <div class="text-danger fw-bold small timer-display" data-close="14:50">คำนวณเวลา...</div>
-                    </div>
+                <div class="card h-100 lotto-card p-2 text-center" onclick="selectLotto('ฮั่งเส็ง (บ่าย)', '14:50')">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Flag_of_Hong_Kong.svg/120px-Flag_of_Hong_Kong.svg.png" 
+                         class="rounded shadow-sm mb-2 mx-auto d-block" style="width: 50px; height: 35px; object-fit: cover;">
+                    <h6 class="fw-bold mb-1">ฮั่งเส็ง (บ่าย)</h6>
+                    <small class="text-muted d-block mb-2" style="font-size: 0.75rem;">หุ้นฮ่องกง</small>
+                    <div class="badge bg-success rounded-pill mb-1 status-badge">เปิดรับแทง</div>
+                    <div class="timer-display text-success small" data-close="14:50">...</div>
                 </div>
             </div>
 
             <div class="col-6 col-md-4 col-lg-3">
-                <div class="card h-100 shadow-sm lotto-card" onclick="selectLotto('หุ้นจีน (เช้า)', '10:00')">
-                    <div class="card-body text-center">
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Flag_of_the_People%27s_Republic_of_China.svg/120px-Flag_of_the_People%27s_Republic_of_China.svg.png" 
-                             alt="China" class="rounded mb-3 shadow-sm" style="width: 60px; height: 40px; object-fit: cover;">
-                        <h5 class="card-title fw-bold">หุ้นจีน (เช้า)</h5>
-                        <div class="badge bg-success mb-2 px-3 py-2 rounded-pill status-badge">เปิดรับแทง</div>
-                        <div class="text-danger fw-bold small timer-display" data-close="10:00">คำนวณเวลา...</div>
-                    </div>
+                <div class="card h-100 lotto-card p-2 text-center" onclick="selectLotto('หุ้นจีน (เช้า)', '10:00')">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fa/Flag_of_the_People%27s_Republic_of_China.svg/120px-Flag_of_the_People%27s_Republic_of_China.svg.png" 
+                         class="rounded shadow-sm mb-2 mx-auto d-block" style="width: 50px; height: 35px; object-fit: cover;">
+                    <h6 class="fw-bold mb-1">หุ้นจีน (เช้า)</h6>
+                    <small class="text-muted d-block mb-2" style="font-size: 0.75rem;">หุ้นจีน</small>
+                    <div class="badge bg-success rounded-pill mb-1 status-badge">เปิดรับแทง</div>
+                    <div class="timer-display text-success small" data-close="10:00">...</div>
                 </div>
             </div>
 
             <div class="col-6 col-md-4 col-lg-3">
-                <div class="card h-100 shadow-sm lotto-card" onclick="selectLotto('หุ้นไต้หวัน', '12:00')">
-                    <div class="card-body text-center">
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Flag_of_the_Republic_of_China.svg/120px-Flag_of_the_Republic_of_China.svg.png" 
-                             alt="Taiwan" class="rounded mb-3 shadow-sm" style="width: 60px; height: 40px; object-fit: cover;">
-                        <h5 class="card-title fw-bold">หุ้นไต้หวัน</h5>
-                        <div class="badge bg-success mb-2 px-3 py-2 rounded-pill status-badge">เปิดรับแทง</div>
-                        <div class="text-danger fw-bold small timer-display" data-close="12:00">คำนวณเวลา...</div>
-                    </div>
+                <div class="card h-100 lotto-card p-2 text-center" onclick="selectLotto('หุ้นไต้หวัน', '12:00')">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Flag_of_the_Republic_of_China.svg/120px-Flag_of_the_Republic_of_China.svg.png" 
+                         class="rounded shadow-sm mb-2 mx-auto d-block" style="width: 50px; height: 35px; object-fit: cover;">
+                    <h6 class="fw-bold mb-1">หุ้นไต้หวัน</h6>
+                    <small class="text-muted d-block mb-2" style="font-size: 0.75rem;">หุ้นไต้หวัน</small>
+                    <div class="badge bg-success rounded-pill mb-1 status-badge">เปิดรับแทง</div>
+                    <div class="timer-display text-success small" data-close="12:00">...</div>
                 </div>
             </div>
 
             <div class="col-6 col-md-4 col-lg-3">
-                <div class="card h-100 shadow-sm lotto-card" onclick="selectLotto('หุ้นสิงคโปร์', '16:00')">
-                    <div class="card-body text-center">
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Flag_of_Singapore.svg/120px-Flag_of_Singapore.svg.png" 
-                             alt="Singapore" class="rounded mb-3 shadow-sm" style="width: 60px; height: 40px; object-fit: cover; border: 1px solid #eee;">
-                        <h5 class="card-title fw-bold">หุ้นสิงคโปร์</h5>
-                        <div class="badge bg-success mb-2 px-3 py-2 rounded-pill status-badge">เปิดรับแทง</div>
-                        <div class="text-danger fw-bold small timer-display" data-close="16:00">คำนวณเวลา...</div>
-                    </div>
+                <div class="card h-100 lotto-card p-2 text-center" onclick="selectLotto('หุ้นสิงคโปร์', '16:00')">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Flag_of_Singapore.svg/120px-Flag_of_Singapore.svg.png" 
+                         class="rounded shadow-sm mb-2 mx-auto d-block" style="width: 50px; height: 35px; object-fit: cover; border: 1px solid #eee;">
+                    <h6 class="fw-bold mb-1">หุ้นสิงคโปร์</h6>
+                    <small class="text-muted d-block mb-2" style="font-size: 0.75rem;">หุ้นสิงคโปร์</small>
+                    <div class="badge bg-success rounded-pill mb-1 status-badge">เปิดรับแทง</div>
+                    <div class="timer-display text-success small" data-close="16:00">...</div>
                 </div>
             </div>
 
             <div class="col-6 col-md-4 col-lg-3">
-                <div class="card h-100 shadow-sm lotto-card" onclick="selectLotto('ดาวโจนส์', '01:00')">
-                    <div class="card-body text-center">
-                        <img src="https://upload.wikimedia.org/wikipedia/en/thumb/a/a4/Flag_of_the_United_States.svg/120px-Flag_of_the_United_States.svg.png" 
-                             alt="USA" class="rounded mb-3 shadow-sm" style="width: 60px; height: 40px; object-fit: cover;">
-                        <h5 class="card-title fw-bold">ดาวโจนส์</h5>
-                        <div class="badge bg-success mb-2 px-3 py-2 rounded-pill status-badge">เปิดรับแทง</div>
-                        <div class="text-danger fw-bold small timer-display" data-close="01:00" data-next-day="true">คำนวณเวลา...</div>
-                    </div>
+                <div class="card h-100 lotto-card p-2 text-center" onclick="selectLotto('ดาวโจนส์', '01:00')">
+                    <img src="https://upload.wikimedia.org/wikipedia/en/thumb/a/a4/Flag_of_the_United_States.svg/120px-Flag_of_the_United_States.svg.png" 
+                         class="rounded shadow-sm mb-2 mx-auto d-block" style="width: 50px; height: 35px; object-fit: cover;">
+                    <h6 class="fw-bold mb-1">ดาวโจนส์</h6>
+                    <small class="text-muted d-block mb-2" style="font-size: 0.75rem;">หุ้น USA</small>
+                    <div class="badge bg-success rounded-pill mb-1 status-badge">เปิดรับแทง</div>
+                    <div class="timer-display text-success small" data-close="01:00" data-next-day="true">...</div>
                 </div>
             </div>
 
-             <div class="col-6 col-md-4 col-lg-3">
-                <div class="card h-100 shadow-sm lotto-card" onclick="selectLotto('หุ้นไทยเย็น', '16:30')">
-                    <div class="card-body text-center">
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Flag_of_Thailand.svg/120px-Flag_of_Thailand.svg.png" 
-                             alt="ThaiStock" class="rounded mb-3 shadow-sm" style="width: 60px; height: 40px; object-fit: cover;">
-                        <h5 class="card-title fw-bold">หุ้นไทยเย็น</h5>
-                        <div class="badge bg-success mb-2 px-3 py-2 rounded-pill status-badge">เปิดรับแทง</div>
-                        <div class="text-danger fw-bold small timer-display" data-close="16:30">คำนวณเวลา...</div>
-                    </div>
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="card h-100 lotto-card p-2 text-center" onclick="selectLotto('หุ้นไทยเย็น', '16:30')">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Flag_of_Thailand.svg/120px-Flag_of_Thailand.svg.png" 
+                         class="rounded shadow-sm mb-2 mx-auto d-block" style="width: 50px; height: 35px; object-fit: cover;">
+                    <h6 class="fw-bold mb-1">หุ้นไทยเย็น</h6>
+                    <small class="text-muted d-block mb-2" style="font-size: 0.75rem;">ช่อง 9</small>
+                    <div class="badge bg-success rounded-pill mb-1 status-badge">เปิดรับแทง</div>
+                    <div class="timer-display text-success small" data-close="16:30">...</div>
                 </div>
             </div>
 
-            
+            <div class="col-6 col-md-4 col-lg-3">
+                <div class="card h-100 lotto-card p-2 text-center" onclick="selectLotto('จับยี่กี VIP', '18:15')">
+                    <div class="bg-primary text-white rounded mb-2 mx-auto d-flex align-items-center justify-content-center shadow-sm" style="width: 50px; height: 35px;">
+                        <i class="fas fa-calculator"></i>
+                    </div>
+                    <h6 class="fw-bold mb-1">จับยี่กี</h6>
+                    <small class="text-muted d-block mb-2" style="font-size: 0.75rem;">ออกทุก 15 นาที</small>
+                    <div class="badge bg-success rounded-pill mb-1 status-badge">เดินดีมาก</div>
+                    <div class="text-danger fw-bold small">ปิดใน 00:15:00</div>
+                </div>
+            </div>
 
         </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
         function selectLotto(name, closeTime) {
@@ -233,78 +301,70 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
-            // เริ่มต้นนาฬิกานับถอยหลัง
+            // โชว์ชื่อผู้ใช้ในเมนู
+            const agentName = localStorage.getItem('agentName') || 'Guest';
+            document.getElementById('user-display-mobile').innerText = agentName;
+
+            // เริ่มนับเวลา
             setInterval(updateCountdowns, 1000);
-            updateCountdowns(); // เรียกครั้งแรกเลยไม่ต้องรอ 1 วิ
+            updateCountdowns();
         });
+
+        function logout() {
+            if(confirm("ต้องการออกจากระบบใช่หรือไม่?")) {
+                localStorage.removeItem('agentName');
+                window.location.href = 'index.html';
+            }
+        }
 
         function updateCountdowns() {
             const now = new Date();
-            
-            // อัปเดตนาฬิกาหัวเว็บ
             document.getElementById('clock-now').innerText = now.toLocaleTimeString('th-TH');
 
-            const timerElements = document.querySelectorAll('.timer-display');
-            
-            timerElements.forEach(el => {
-                const closeTimeStr = el.dataset.close; // "15:30"
+            document.querySelectorAll('.timer-display').forEach(el => {
+                const closeTimeStr = el.dataset.close;
                 if (!closeTimeStr) return;
 
                 const [hours, minutes] = closeTimeStr.split(':').map(Number);
                 let targetDate = new Date();
                 targetDate.setHours(hours, minutes, 0, 0);
 
-                // กรณีดาวโจนส์ หรือหวยที่ข้ามวัน (เช่น ปิด 01:00 แต่ตอนนี้ 20:00)
                 if (el.dataset.nextDay === "true" && now.getHours() > hours) {
                     targetDate.setDate(targetDate.getDate() + 1);
                 }
 
                 const diff = targetDate - now;
-
                 const card = el.closest('.lotto-card');
                 const badge = card.querySelector('.status-badge');
 
                 if (diff <= 0) {
-                    // หมดเวลา
                     el.innerText = "ปิดรับแล้ว";
-                    el.className = "text-secondary fw-bold small";
-                    
+                    el.className = "text-secondary fw-bold small"; 
                     if (badge) {
                         badge.innerText = "ปิดรับ";
-                        badge.className = "badge bg-secondary mb-2 px-3 py-2 rounded-pill status-badge";
+                        badge.className = "badge bg-secondary rounded-pill mb-1 status-badge";
                     }
-                    
-                    card.classList.add('closed-lotto'); // ใส่สีเทา ห้ามกด
+                    card.classList.add('closed-lotto'); 
                 } else {
-                    // ยังไม่หมดเวลา
                     const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
                     const m = Math.floor((diff / (1000 * 60)) % 60);
                     const s = Math.floor((diff / 1000) % 60);
 
-                    el.innerHTML = `<i class="fas fa-clock"></i> ปิดใน ${pad(h)}:${pad(m)}:${pad(s)}`;
+                    el.innerHTML = `<i class="fas fa-clock"></i> เหลือ ${pad(h)}:${pad(m)}:${pad(s)}`;
                     
-                    // ถ้าเหลือน้อยกว่า 1 ชม. เปลี่ยนเป็นสีส้ม/แดง เตือน
-                    if (h === 0 && m < 60) {
-                        el.className = "text-danger fw-bold small timer-display";
-                    } else {
-                        el.className = "text-success fw-bold small timer-display";
+                    if (h === 0 && m < 30) el.className = "text-danger fw-bold small timer-display";
+                    else el.className = "text-success fw-bold small timer-display";
+
+                    if (badge) {
+                        badge.innerText = "เปิดรับแทง";
+                        badge.className = "badge bg-success rounded-pill mb-1 status-badge";
                     }
+                    card.classList.remove('closed-lotto');
                 }
             });
         }
 
-        function pad(n) {
-            return n < 10 ? '0' + n : n;
-        }
-
-
-    function logout() {
-        if(confirm("ต้องการออกจากระบบใช่หรือไม่?")) {
-            localStorage.removeItem('agentName'); // ลบชื่อที่จำไว้
-            localStorage.removeItem('isAdmin');   // ลบสถานะ Admin (ถ้ามี)
-            window.location.href = 'index.html';  // ดีดกลับหน้า Login
-        }
-    }
+        function pad(n) { return n < 10 ? '0' + n : n; }
     </script>
 </body>
 </html>
