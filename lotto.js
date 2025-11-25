@@ -331,49 +331,111 @@ function clearList() {
 
 // ฟังก์ชัน saveBill แบบ Firebase
 function saveBill() {
-    // 1. ตรวจสอบรายการ (เหมือนเดิม)
     const items = [];
     let hasError = false;
+    let errorMsg = "";
+
+    // 1. ล้างการแจ้งเตือนเก่าก่อน (ถ้ามี)
     document.querySelectorAll('#bet-list .list-group-item').forEach(row => {
-        const price = row.querySelector('.price-input').value;
-        if(!price || price <= 0) hasError = true;
-        else items.push({
-            number: row.children[0].innerText,
-            type: row.children[1].innerText,
-            price: parseInt(price)
-        });
+        row.style.backgroundColor = ""; // ล้างสีพื้นหลัง
+        row.querySelector('.price-input').classList.remove('border', 'border-danger'); // ล้างขอบแดง
     });
 
-    if(items.length === 0) { alert("ไม่มีรายการให้บันทึก"); return; }
-    if(hasError) { alert("กรุณาใส่ราคาให้ครบทุกรายการ"); return; }
+    const rows = document.querySelectorAll('#bet-list .list-group-item');
 
-    // 2. เตรียมข้อมูล
-    const currentUser = localStorage.getItem('agentName') || "Guest";
+    // วนลูปเช็คทีละรายการ
+    rows.forEach(row => {
+        // ดึงค่าจากหน้าจอ
+        let numberText = row.children[0].innerText.trim();
+        let typeText = row.children[1].innerText.trim();
+        const priceInput = row.querySelector('.price-input');
+        const priceVal = priceInput.value;
+
+        // --- กฏข้อที่ 1: ถ้าเป็นค่าว่าง ให้ "ตัดทิ้งเลย" ---
+        if (numberText === "" || numberText === "_" || numberText === "undefined") {
+            // return ตรงนี้คือข้ามการทำงานของ "บรรทัดนี้" ไปเลย (Skip) 
+            // ไม่เช็คราคา ไม่เก็บข้อมูล เหมือนบรรทัดนี้ไม่มีตัวตน
+            return; 
+        }
+
+        // --- กฏข้อที่ 2: ตรวจสอบประเภทเลข (Validation) ---
+        let isValidFormat = true;
+
+        // ถ้าเป็นหมวด 3 ตัว -> เลขต้องมี 3 หลัก
+        if (typeText.includes("3 ตัว")) {
+            if (numberText.length !== 3) isValidFormat = false;
+        } 
+        // ถ้าเป็นหมวด 2 ตัว (รวมถึง 19 ประตู, รูด, เบิ้ล, คู่คี่) -> เลขต้องมี 2 หลัก
+        else if (typeText.includes("2 ตัว") || typeText.includes("19") || typeText.includes("รูด") || typeText.includes("เบิ้ล") || typeText.includes("คู่") || typeText.includes("คี่")) {
+            if (numberText.length !== 2) isValidFormat = false;
+        }
+        // ถ้าเป็นหมวด เลขวิ่ง -> เลขต้องมี 1 หลัก
+        else if (typeText.includes("วิ่ง")) {
+            if (numberText.length !== 1) isValidFormat = false;
+        }
+
+        if (!isValidFormat) {
+            hasError = true;
+            row.style.backgroundColor = "#ffe6e6"; // ไฮไลท์บรรทัดที่เป็นปัญหาด้วยสีแดงอ่อน
+            errorMsg = `พบรายการผิดประเภท: "${typeText}" แต่เลขคือ "${numberText}" (จำนวนหลักไม่ถูกต้อง)`;
+            return; // หยุดการทำงานบรรทัดนี้ (ไม่บันทึก)
+        }
+
+        // --- กฏข้อที่ 3: ตรวจสอบราคา ---
+        if (!priceVal || parseInt(priceVal) <= 0) {
+            hasError = true;
+            priceInput.classList.add('border', 'border-danger'); // ทำขอบแดงที่ช่องราคา
+            if(errorMsg === "") errorMsg = "กรุณาใส่ราคาให้ครบทุกรายการ";
+        } else {
+            // ผ่านทุกด่าน! เก็บเข้าตะกร้า
+            items.push({
+                number: numberText,
+                type: typeText,
+                price: parseInt(priceVal)
+            });
+        }
+    });
+
+    // --- สรุปผลการตรวจสอบ ---
+
+    // 1. ถ้ากรองค่าว่างออกหมดแล้ว ไม่เหลือรายการเลย
+    if (items.length === 0 && !hasError) {
+        alert("ไม่มีรายการที่สมบูรณ์ให้บันทึก (ค่าว่างถูกตัดออกหมดแล้ว)");
+        return;
+    }
+
+    // 2. ถ้าเจอ Error (เช่น เลขผิดหลัก หรือ ไม่ใส่ราคา)
+    if (hasError) {
+        alert(errorMsg); // แจ้งเตือน
+        return; // ไม่บันทึก
+    }
+
+    // 3. ผ่านหมด -> เริ่มกระบวนการบันทึก
+    const storedName = localStorage.getItem('agentName') || "ลูกค้าทั่วไป";
+    const ownerName = prompt("ยืนยันชื่อลูกค้า:", storedName);
+    if (ownerName === null) return; 
+
+    const finalOwnerName = ownerName.trim() === "" ? storedName : ownerName;
     const lottoName = document.getElementById('lotto-title').innerText;
-    
-    const ownerName = prompt("ระบุชื่อลูกค้าเจ้าของบิล:", "ลูกค้าทั่วไป");
-    if (ownerName === null) return;
-    const finalOwnerName = ownerName.trim() === "" ? "ลูกค้าทั่วไป" : ownerName;
-
     const total = items.reduce((sum, item) => sum + item.price, 0);
 
-    // 3. ส่งขึ้น Firebase (Cloud Firestore)
+    // ส่งขึ้น Firebase
     db.collection("bills").add({
-        agent: currentUser,      // ใครคีย์ (User1)
-        owner: finalOwnerName,   // ลูกค้าคนไหน
-        lottoName: lottoName,    // หวยอะไร
-        items: items,            // รายการเลข
-        total: total,            // ยอดรวม
-        timestamp: firebase.firestore.FieldValue.serverTimestamp(), // เวลาเซิร์ฟเวอร์
-        dateString: new Date().toLocaleString('th-TH') // เวลาที่แสดงผล
+        agent: localStorage.getItem('agentName'),      
+        owner: finalOwnerName,   
+        lottoName: lottoName,    
+        items: items,            
+        total: total,            
+        timestamp: firebase.firestore.FieldValue.serverTimestamp(), 
+        dateString: new Date().toLocaleString('th-TH') 
     })
     .then(() => {
-        alert(`บันทึกสำเร็จลง Cloud เรียบร้อย!\nผู้คีย์: ${currentUser}`);
-        document.getElementById('bet-list').innerHTML = '';
+        alert(`บันทึกสำเร็จ!\nลูกค้า: ${finalOwnerName}\nจำนวน: ${items.length} รายการ`);
+        document.getElementById('bet-list').innerHTML = ''; // ล้างหน้าจอ
         calculateTotal();
     })
     .catch((error) => {
-        console.error("Error writing document: ", error);
-        alert("เกิดข้อผิดพลาด บันทึกไม่สำเร็จ");
+        console.error("Error:", error);
+        alert("บันทึกไม่สำเร็จ: " + error.message);
     });
 }
