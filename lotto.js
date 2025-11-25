@@ -263,27 +263,27 @@ function getPermutations(numStr) {
 }
 
 // --- ฟังก์ชันเพิ่มลงรายการ (แก้บั๊กเพิ่มค่าว่างตรงนี้) ---
+
 function addToList() {
     // 1. เช็ค Checkbox
     const checkboxes = document.querySelectorAll('.sub-opt-check:checked');
-    if (checkboxes.length === 0) {
-        // ถ้ายังไม่ได้เลือกประเภท อย่าเพิ่งเตือนตอน Auto Submit (มันจะน่ารำคาญ)
-        return;
-    }
+    if (checkboxes.length === 0) return;
 
-    // 2. *** กรองเข้มข้น: ตรวจสอบความยาวเลขก่อนทำต่อ ***
-    let requiredLen = 0;
-    if (currentSpecialMode && ['19door', 'rootFront', 'rootBack'].includes(currentSpecialMode)) {
-        requiredLen = 1;
-    } else if (['double', 'even', 'odd'].includes(currentSpecialMode)) {
-        requiredLen = 0; // พวกนี้ไม่ต้องมีเลข input
-    } else {
-        requiredLen = (currentCategory === '3') ? 3 : (currentCategory === '2') ? 2 : 1;
-    }
+    // 2. *** แก้ไขจุดที่ทำให้กดปุ่มพิเศษไม่ติด ***
+    // เช็คว่าเป็นโหมดที่ไม่ต้องใช้ตัวเลขนำเข้าหรือไม่ (เบิ้ล, คู่, คี่)
+    const isInstantMode = ['double', 'even', 'odd'].includes(currentSpecialMode);
 
-    // ถ้าไม่ใช่โหมดพิเศษแบบไม่ต้องกดเลข แล้วเลขไม่ครบตามจำนวน -> หยุดทันที! ห้ามเพิ่ม!
-    if (requiredLen > 0 && currentInput.length !== requiredLen) {
-        return; 
+    if (!isInstantMode) {
+        // ถ้าไม่ใช่โหมดพิเศษ (เช่น 3 ตัว, 2 ตัว, 19ประตู) ต้องเช็คความยาวเลข
+        let requiredLen = 0;
+        if (currentSpecialMode && ['19door', 'rootFront', 'rootBack'].includes(currentSpecialMode)) {
+            requiredLen = 1;
+        } else {
+            requiredLen = (currentCategory === '3') ? 3 : (currentCategory === '2') ? 2 : 1;
+        }
+
+        // ถ้าเลขไม่ครบ ให้หยุดทำงาน (ไม่เพิ่มรายการ)
+        if (currentInput.length !== requiredLen) return;
     }
 
     // 3. สร้างเลข
@@ -292,11 +292,10 @@ function addToList() {
 
     const listContainer = document.getElementById('bet-list');
 
-    // 4. วนลูปเพิ่ม
+    // 4. วนลูปเพิ่มรายการ
     checkboxes.forEach(chk => {
         const typeName = chk.value;
         numbersToPlay.forEach(num => {
-            // ป้องกันเลขว่างหลุดเข้ามา
             if(!num || num.trim() === "") return;
 
             const itemDiv = document.createElement('div');
@@ -316,11 +315,16 @@ function addToList() {
         });
     });
 
-    // 5. เคลียร์ค่าหลังเพิ่มสำเร็จ
+    // 5. เคลียร์ค่า
     currentInput = "";
     if (['19door', 'rootFront', 'rootBack'].includes(currentSpecialMode)) {
         resetSpecialMode();
     }
+    // ถ้าเป็นโหมด Instant (เบิ้ล/คู่/คี่) ให้รีเซ็ตโหมดด้วย เพื่อให้กลับมาหน้าปกติ
+    if (isInstantMode) {
+        resetSpecialMode();
+    }
+    
     updateDisplay();
     calculateTotal();
 }
@@ -427,6 +431,8 @@ function saveBill() {
     const lottoName = document.getElementById('lotto-title').innerText;
     const total = items.reduce((sum, item) => sum + item.price, 0);
 
+    // ... (ส่วนโค้ดด้านบนเหมือนเดิม) ...
+
     // 3. ส่งขึ้น Firebase
     db.collection("bills").add({
         agent: localStorage.getItem('agentName'),      
@@ -438,7 +444,7 @@ function saveBill() {
         dateString: new Date().toLocaleString('th-TH') 
     })
     .then(() => {
-
+        // --- แก้ไขตรงนี้ครับ ---
         alert(`บันทึกสำเร็จ!\nลูกค้า: ${finalOwnerName}\nยอดเงิน: ${total.toLocaleString()} บาท`);
         
         // ล้างหน้าจอ
@@ -453,4 +459,3 @@ function saveBill() {
         alert("บันทึกไม่สำเร็จ: " + error.message);
     });
 }
-
