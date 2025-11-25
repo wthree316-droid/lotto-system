@@ -236,11 +236,11 @@
         }
 
         function createBillCard(bill, index) {
+            // สร้าง ID สุ่มเพื่อป้องกัน ID ซ้ำ
             const safeId = 'acc_' + index + '_' + Math.floor(Math.random() * 10000);
             const deleteBtn = `<button class="btn btn-sm btn-danger ms-2 z-3" style="position:relative;" onclick="event.stopPropagation(); deleteSingleBill('${bill.id}')"><i class="fas fa-trash"></i></button>`;
 
-            // --- 1. รวมเลขที่เหมือนกัน (Pre-process) ---
-            // เป้าหมาย: ถ้ามีเลข 22 (บน 10) และ 22 (ล่าง 10) -> รวมเป็น {num: 22, types:['บน','ล่าง'], prices:[10,10]}
+            // --- 1. รวมเลขที่เหมือนกัน ---
             const mergedNumbers = {};
 
             if(bill.items) {
@@ -249,21 +249,23 @@
                     if (!mergedNumbers[num]) {
                         mergedNumbers[num] = { types: [], prices: [] };
                     }
+                    // เก็บค่าตามจริงที่ส่งมาจาก lotto.js เลย
                     mergedNumbers[num].types.push(item.type);
                     mergedNumbers[num].prices.push(item.price);
                 });
             }
 
-            // --- 2. จัดกลุ่มตามลายเซ็น (Group by Signature) ---
-            // ลายเซ็น = ประเภททั้งหมด + ราคาทั้งหมด (เช่น "บน+ล่าง_10+10")
+            // --- 2. จัดกลุ่มเพื่อแสดงผล ---
             const groupedDisplay = {};
 
             for (const num in mergedNumbers) {
                 const data = mergedNumbers[num];
-                const typeSign = data.types.join(' x '); // บน x ล่าง
-                const priceSign = data.prices.join(' x '); // 10 x 10
                 
-                // คำนวณประเภทหลัก (3 ตัว, 2 ตัว) จากความยาวเลข
+                // เชื่อมคำด้วย x ตรงๆ เลย (ไม่ต้อง replace อะไรแล้ว)
+                const typeSign = data.types.join(' x '); 
+                const priceSign = data.prices.join(' x ');
+                
+                // คำนวณหัวข้อหลัก (Header สีเขียวเข้ม) จากจำนวนหลักของตัวเลข
                 let mainCat = "เลขวิ่ง";
                 if(num.length === 3) mainCat = "3 ตัว";
                 else if(num.length === 2) mainCat = "2 ตัว";
