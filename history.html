@@ -12,12 +12,29 @@
     <script src="firebase-config.js"></script>
 
     <style>
-        body { font-family: 'Sarabun', sans-serif; background: #f8f9fa; padding-bottom: 80px; }
+        body { font-family: 'Sarabun', sans-serif; background: #f8f9fa; padding-bottom: 100px; }
+        
+        /* Footer Bar Style */
         .grand-total-bar {
             position: fixed; bottom: 0; left: 0; width: 100%;
             background: #212529; color: white;
-            padding: 15px 20px; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); z-index: 1000;
+            padding: 10px 15px; 
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.2); 
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
+        .total-box { text-align: center; cursor: pointer; transition: 0.2s; }
+        .total-box:active { transform: scale(0.95); } /* Effect เวลากด */
+        .total-label { font-size: 0.8rem; color: #adb5bd; display: block; }
+        .total-value { font-size: 1.2rem; font-weight: bold; }
+        
+        .divider { height: 40px; width: 1px; background-color: #495057; margin: 0 10px; }
+
+        /* ปรับแต่ง Modal ให้ดูง่าย */
+        .list-group-item-action:hover { background-color: #f1f3f5; }
+        .date-badge { width: 100px; display: inline-block; }
     </style>
 </head>
 <body>
@@ -26,15 +43,15 @@
             <a class="navbar-brand" href="#" id="back-link">
                 <i class="fas fa-arrow-left"></i> <span id="back-text">ย้อนกลับ</span>
             </a>
-            <span class="navbar-text text-white"><i class="fas fa-history"></i> ประวัติบิลย้อนหลัง</span>
+            <span class="navbar-text text-white"><i class="fas fa-history"></i> ประวัติบิล</span>
         </div>
     </nav>
 
     <div class="container">
         <div class="d-flex justify-content-between align-items-center mb-3">
-            <h4 class="m-0" id="header-title">กำลังตรวจสอบ...</h4>
+            <h4 class="m-0" id="header-title">ตรวจสอบข้อมูล...</h4>
             <button class="btn btn-outline-danger btn-sm" onclick="clearHistory()">
-                <i class="fas fa-trash"></i> ล้างประวัติ
+                <i class="fas fa-trash"></i> ล้างทั้งหมด
             </button>
         </div>
 
@@ -44,27 +61,52 @@
         <div id="error-box" class="alert alert-danger d-none mt-3"></div>
     </div>
 
-    <div class="grand-total-bar d-flex justify-content-between align-items-center">
-        <span class="fs-5">ยอดรวมทั้งหมด:</span>
-        <span class="fs-3 fw-bold text-warning" id="grand-total-display">0 บาท</span>
+    <div class="grand-total-bar">
+        <div class="total-box flex-grow-1" onclick="showDailyBreakdown()">
+            <span class="total-label text-info">
+                <i class="fas fa-calendar-day"></i> ยอดวันนี้ <i class="fas fa-chevron-up ms-1" style="font-size: 0.6rem;"></i>
+            </span>
+            <span class="total-value text-info" id="daily-total-display">0</span>
+        </div>
+        
+        <div class="divider"></div>
+
+        <div class="total-box flex-grow-1">
+            <span class="total-label text-warning"><i class="fas fa-coins"></i> ยอดรวมทั้งสิ้น</span>
+            <span class="total-value text-warning" id="grand-total-display">0</span>
+        </div>
+    </div>
+
+    <div class="modal fade" id="dailyModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title"><i class="fas fa-calendar-alt"></i> สรุปยอดรายวัน</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <ul class="list-group list-group-flush" id="daily-list-container">
+                        </ul>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary w-100" data-bs-dismiss="modal">ปิด</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
     <script>
+        // ตัวแปรเก็บข้อมูลสรุปยอดแยกตามวัน
+        let dailySummaryData = {}; 
+
         document.addEventListener('DOMContentLoaded', () => {
             handleBackButton();
-            
-            // เช็คว่า Firebase พร้อมไหม
             try {
-                if (!firebase.apps.length) {
-                    showError("Firebase ยังไม่ถูกเชื่อมต่อ! (ตรวจสอบไฟล์ firebase-config.js)");
-                } else {
-                    loadHistory();
-                }
-            } catch (e) {
-                showError("เกิดข้อผิดพลาด: " + e.message);
-            }
+                if (!firebase.apps.length) showError("Firebase Config Error");
+                else loadHistory();
+            } catch (e) { showError("Error: " + e.message); }
         });
 
         function handleBackButton() {
@@ -85,23 +127,17 @@
         function loadHistory() {
             const container = document.getElementById('historyAccordion');
             const grandTotalDisplay = document.getElementById('grand-total-display');
+            const dailyTotalDisplay = document.getElementById('daily-total-display');
             
-            // ดึงชื่อคนล็อกอิน
             const currentUser = localStorage.getItem('agentName');
-            
             if(!currentUser) {
-                alert("กรุณาเข้าสู่ระบบก่อน");
                 window.location.href = 'index.html'; 
                 return;
             }
 
-            document.getElementById('header-title').innerHTML = `<i class="fas fa-list-alt text-primary"></i> บิลของ: <span class="text-dark">${currentUser}</span>`;
-            
-            container.innerHTML = '<div class="text-center mt-5"><div class="spinner-border text-primary"></div><p>กำลังดึงข้อมูลจาก Cloud...</p></div>';
+            document.getElementById('header-title').innerHTML = `<i class="fas fa-list-alt text-primary"></i> ของ: <span class="text-dark">${currentUser}</span>`;
+            container.innerHTML = '<div class="text-center mt-5"><div class="spinner-border text-primary"></div><p>กำลังโหลด...</p></div>';
 
-            // --- ดึงข้อมูลจาก Firebase ---
-            // หมายเหตุ: เราไม่ใส่ orderBy ในคำสั่ง query เพื่อป้องกัน error เรื่อง index
-            // เราจะมา sort ใน javascript แทน
             db.collection("bills")
                 .where("agent", "==", currentUser) 
                 .get()
@@ -109,26 +145,53 @@
                     
                     if (querySnapshot.empty) {
                         container.innerHTML = '<div class="alert alert-secondary text-center py-5">ยังไม่มีข้อมูลประวัติ</div>';
-                        grandTotalDisplay.innerText = "0 บาท";
+                        grandTotalDisplay.innerText = "0";
+                        dailyTotalDisplay.innerText = "0";
                         return;
                     }
 
-                    // แปลงข้อมูลเป็น Array เพื่อเรียงลำดับ
                     let bills = [];
                     querySnapshot.forEach(doc => {
                         bills.push({ id: doc.id, ...doc.data() });
                     });
 
-                    // เรียงลำดับจากใหม่ไปเก่า (ดูจาก timestamp)
+                    // เรียงบิลจากใหม่ไปเก่า
                     bills.sort((a, b) => b.timestamp - a.timestamp);
 
                     container.innerHTML = ''; 
+                    
+                    // รีเซ็ตตัวแปรคำนวณ
                     let grandTotal = 0;
+                    let todayTotal = 0;
+                    dailySummaryData = {}; // ล้างข้อมูลเก่า
+
+                    const today = new Date();
+                    const todayStr = today.getDate() + "/" + (today.getMonth() + 1) + "/" + (today.getFullYear() + 543); // รูปแบบไทย D/M/Y
 
                     bills.forEach((bill) => {
                         const billId = `bill-${bill.id}`;
-                        grandTotal += (bill.total || 0);
+                        const billAmount = bill.total || 0;
+                        grandTotal += billAmount;
 
+                        // --- Logic รวมยอดรายวัน ---
+                        if (bill.timestamp) {
+                            const d = bill.timestamp.toDate();
+                            // แปลงเป็นรูปแบบวันที่ไทย D/M/Y (เช่น 25/11/2568)
+                            const dateKey = d.getDate() + "/" + (d.getMonth() + 1) + "/" + (d.getFullYear() + 543);
+                            
+                            // บวกยอดสะสมลงใน object ตามวันที่
+                            if (!dailySummaryData[dateKey]) {
+                                dailySummaryData[dateKey] = 0;
+                            }
+                            dailySummaryData[dateKey] += billAmount;
+
+                            // ถ้าเป็นวันนี้ ให้เก็บเข้าตัวแปร todayTotal ด้วย
+                            if (dateKey === todayStr) {
+                                todayTotal += billAmount;
+                            }
+                        }
+
+                        // --- สร้าง HTML รายการบิล (เหมือนเดิม) ---
                         let itemRows = '';
                         if(bill.items) {
                             bill.items.forEach(item => {
@@ -141,8 +204,6 @@
                                 `;
                             });
                         }
-
-                        // ถ้า dateString ไม่มี ให้ใช้ timestamp แปลง
                         const dateShow = bill.dateString || "ไม่ระบุเวลา";
 
                         const html = `
@@ -151,14 +212,14 @@
                                     <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#${billId}">
                                         <div class="w-100 d-flex flex-column flex-md-row justify-content-between pe-3">
                                             <div>
-                                                <div class="fw-bold text-dark"><i class="fas fa-user me-1"></i> ลูกค้า: ${bill.owner || '-'}</div>
+                                                <div class="fw-bold text-dark"><i class="fas fa-user me-1"></i> ${bill.owner || '-'}</div>
                                                 <div class="text-muted small">
                                                     <span class="badge bg-info text-dark me-1">${bill.lottoName || 'หวย'}</span>
-                                                    <i class="far fa-clock ms-1"></i> ${dateShow}
+                                                    ${dateShow}
                                                 </div>
                                             </div>
                                             <div class="text-md-end">
-                                                <span class="fw-bold text-success fs-5">${(bill.total || 0).toLocaleString()} ฿</span>
+                                                <span class="fw-bold text-success fs-5">${billAmount.toLocaleString()} ฿</span>
                                             </div>
                                         </div>
                                     </button>
@@ -178,7 +239,9 @@
                         container.innerHTML += html;
                     });
 
-                    grandTotalDisplay.innerText = grandTotal.toLocaleString() + " บาท";
+                    // แสดงยอดรวม
+                    grandTotalDisplay.innerText = grandTotal.toLocaleString() + " ฿";
+                    dailyTotalDisplay.innerText = todayTotal.toLocaleString() + " ฿";
                 })
                 .catch((error) => {
                     console.error("Error:", error);
@@ -186,25 +249,68 @@
                 });
         }
 
+        // --- ฟังก์ชันแสดง Modal สรุปยอดรายวัน ---
+        function showDailyBreakdown() {
+            const listContainer = document.getElementById('daily-list-container');
+            listContainer.innerHTML = '';
+
+            // ดึงวันที่ทั้งหมดออกมาเป็น Array
+            const dates = Object.keys(dailySummaryData);
+
+            if (dates.length === 0) {
+                listContainer.innerHTML = '<li class="list-group-item text-center text-muted py-3">ไม่มีข้อมูลยอดขาย</li>';
+            } else {
+                // เรียงวันที่จาก ใหม่ -> เก่า (Custom Sort สำหรับสตริง DD/MM/YYYY)
+                dates.sort((a, b) => {
+                    const [d1, m1, y1] = a.split('/').map(Number);
+                    const [d2, m2, y2] = b.split('/').map(Number);
+                    // เทียบปี -> เดือน -> วัน (ถอยหลัง)
+                    if (y1 !== y2) return y2 - y1;
+                    if (m1 !== m2) return m2 - m1;
+                    return d2 - d1;
+                });
+
+                // สร้างรายการใน Modal
+                dates.forEach(date => {
+                    const amount = dailySummaryData[date];
+                    
+                    // เช็คว่าเป็นวันนี้หรือไม่ เพื่อใส่สีให้เด่น
+                    const today = new Date();
+                    const todayStr = today.getDate() + "/" + (today.getMonth() + 1) + "/" + (today.getFullYear() + 543);
+                    const isToday = (date === todayStr);
+                    
+                    const highlightClass = isToday ? "bg-info bg-opacity-10 fw-bold" : "";
+                    const dateLabel = isToday ? `${date} (วันนี้)` : date;
+
+                    const itemHtml = `
+                        <li class="list-group-item d-flex justify-content-between align-items-center py-3 ${highlightClass}">
+                            <span>
+                                <i class="far fa-calendar-alt text-secondary me-2"></i> 
+                                <span class="date-badge">${dateLabel}</span>
+                            </span>
+                            <span class="fs-5 text-success font-monospace">${amount.toLocaleString()} ฿</span>
+                        </li>
+                    `;
+                    listContainer.innerHTML += itemHtml;
+                });
+            }
+
+            // เปิด Modal (ใช้ Bootstrap API)
+            const modal = new bootstrap.Modal(document.getElementById('dailyModal'));
+            modal.show();
+        }
+
         function clearHistory() {
             const currentUser = localStorage.getItem('agentName');
             if (confirm(`ยืนยันลบประวัติ "บน Cloud" ทั้งหมดของ ${currentUser} ?`)) {
-                
                 db.collection("bills").where("agent", "==", currentUser).get()
                 .then((querySnapshot) => {
-                    const batch = db.batch(); // ใช้ Batch ลบทีเดียว
-                    querySnapshot.forEach((doc) => {
-                        batch.delete(doc.ref);
-                    });
+                    const batch = db.batch();
+                    querySnapshot.forEach((doc) => { batch.delete(doc.ref); });
                     return batch.commit();
                 })
-                .then(() => {
-                    alert("ลบข้อมูลเรียบร้อย");
-                    loadHistory();
-                })
-                .catch((error) => {
-                    alert("ลบไม่สำเร็จ: " + error.message);
-                });
+                .then(() => { alert("ลบข้อมูลเรียบร้อย"); loadHistory(); })
+                .catch((error) => { alert("ลบไม่สำเร็จ: " + error.message); });
             }
         }
 
